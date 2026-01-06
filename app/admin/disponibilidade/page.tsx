@@ -4,7 +4,7 @@ import { requireAdmin } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { formatDate, getDayName } from '@/lib/utils'
-import { Disponibilidade } from '@/types'
+import { Disponibilidade, Usuario, DiaAtuacao } from '@/types'
 
 export default async function AdminDisponibilidadePage() {
   await requireAdmin()
@@ -55,7 +55,7 @@ export default async function AdminDisponibilidadePage() {
         </p>
       </div>
 
-      {diasAtuacao && diasAtuacao.length > 0 && usuarios && usuarios.length > 0 ? (
+      {(diasAtuacao as DiaAtuacao[] | null) && (diasAtuacao as DiaAtuacao[]).length > 0 && (usuarios as Usuario[] | null) && (usuarios as Usuario[]).length > 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -64,7 +64,7 @@ export default async function AdminDisponibilidadePage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider sticky left-0 bg-gray-50 dark:bg-gray-700 z-10">
                     Data
                   </th>
-                  {usuarios.map((usuario) => (
+                  {(usuarios as Usuario[]).map((usuario) => (
                     <th
                       key={usuario.id}
                       className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider min-w-[120px]"
@@ -82,8 +82,8 @@ export default async function AdminDisponibilidadePage() {
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {diasAtuacao.map((dia) => {
-                  const statusPorUsuario = usuarios.map((usuario) => {
+                {(diasAtuacao as DiaAtuacao[]).map((dia) => {
+                  const statusPorUsuario = (usuarios as Usuario[]).map((usuario) => {
                     const status = disponibilidadeMap[usuario.id]?.[dia.data]
                     return { usuario, status }
                   })
@@ -130,7 +130,7 @@ export default async function AdminDisponibilidadePage() {
         </div>
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center text-gray-500 dark:text-gray-400">
-          {!diasAtuacao || diasAtuacao.length === 0 ? (
+          {!(diasAtuacao as DiaAtuacao[] | null) || (diasAtuacao as DiaAtuacao[]).length === 0 ? (
             <p>Nenhum dia de atuação cadastrado.</p>
           ) : (
             <p>Nenhum usuário cadastrado.</p>
