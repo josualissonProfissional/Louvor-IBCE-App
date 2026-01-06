@@ -73,3 +73,4 @@ FROM pg_policies
 WHERE tablename IN ('instrumentos', 'dias_atuacao', 'usuarios')
 ORDER BY tablename, cmd, policyname;
 
+

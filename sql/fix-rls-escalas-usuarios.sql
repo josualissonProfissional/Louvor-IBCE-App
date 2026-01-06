@@ -26,3 +26,4 @@ CREATE POLICY "Usuários podem ver dados básicos em escalas" ON usuarios
 COMMENT ON POLICY "Usuários podem ver dados básicos em escalas" ON usuarios IS 
 'Permite que usuários autenticados vejam dados básicos (nome, email, instrumento) de outros usuários quando estão relacionados a escalas recentes ou futuras, permitindo visualizar a escala completa na página home.';
 
+

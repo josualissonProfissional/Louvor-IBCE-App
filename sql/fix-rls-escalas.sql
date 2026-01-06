@@ -41,3 +41,4 @@ FROM pg_policies
 WHERE tablename = 'escalas'
 ORDER BY cmd, policyname;
 
+

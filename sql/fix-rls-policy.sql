@@ -43,3 +43,4 @@ FROM pg_policies
 WHERE tablename = 'usuarios'
 ORDER BY policyname;
 
+

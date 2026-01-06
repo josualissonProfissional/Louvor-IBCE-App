@@ -31,3 +31,4 @@ FROM pg_policies
 WHERE tablename = 'disponibilidade'
 ORDER BY cmd, policyname;
 
+
