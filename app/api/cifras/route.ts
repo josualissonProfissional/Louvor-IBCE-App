@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
+import { NovaCifra } from '@/types'
 
 // POST - Adiciona nova cifra a uma música
 export async function POST(request: NextRequest) {
@@ -12,12 +13,14 @@ export async function POST(request: NextRequest) {
 
     const { musica_id, texto } = body
 
+    const cifraData: NovaCifra = {
+      musica_id,
+      texto,
+    }
+
     const { data, error } = await supabase
       .from('cifras')
-      .insert({
-        musica_id,
-        texto,
-      })
+      .insert(cifraData)
       .select()
       .single()
 

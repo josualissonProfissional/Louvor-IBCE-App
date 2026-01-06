@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, requireAdmin } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
+import { NovaMusica, NovaCifra, NovaLetra } from '@/types'
 
 // GET - Lista todas as músicas
 export async function GET() {
@@ -39,12 +40,14 @@ export async function POST(request: NextRequest) {
     const { titulo, link_youtube, cifras, letras } = body
 
     // Cria a música
+    const musicaData: NovaMusica = {
+      titulo,
+      link_youtube: link_youtube || null,
+    }
+
     const { data: musica, error: musicaError } = await supabase
       .from('musicas')
-      .insert({
-        titulo,
-        link_youtube: link_youtube || null,
-      })
+      .insert(musicaData)
       .select()
       .single()
 
@@ -52,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     // Adiciona cifras se fornecidas
     if (cifras && cifras.length > 0) {
-      const cifrasData = cifras.map((cifra: string | { titulo?: string | null; texto: string }) => {
+      const cifrasData: NovaCifra[] = cifras.map((cifra: string | { titulo?: string | null; texto: string }) => {
         // Suporta tanto formato antigo (string) quanto novo (objeto com titulo e texto)
         if (typeof cifra === 'string') {
           return {
@@ -74,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     // Adiciona letras se fornecidas
     if (letras && letras.length > 0) {
-      const letrasData = letras.map((texto: string) => ({
+      const letrasData: NovaLetra[] = letras.map((texto: string) => ({
         musica_id: musica.id,
         texto,
       }))

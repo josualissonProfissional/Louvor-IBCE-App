@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
+import { NovaEscala } from '@/types'
 
 // GET - Lista escalas
 export async function GET(request: NextRequest) {
@@ -57,14 +58,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const escalaData: NovaEscala = {
+      data: dataEscala,
+      musica_id: musica_id || null, // Permite null para escalas gerais
+      usuario_id,
+      funcao,
+    }
+
     const { data, error } = await supabase
       .from('escalas')
-      .insert({
-        data: dataEscala,
-        musica_id: musica_id || null, // Permite null para escalas gerais
-        usuario_id,
-        funcao,
-      })
+      .insert(escalaData)
       .select()
       .single()
 
