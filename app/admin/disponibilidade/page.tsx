@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { formatDate, getDayName } from '@/lib/utils'
+import { Disponibilidade } from '@/types'
 
 export default async function AdminDisponibilidadePage() {
   await requireAdmin()
@@ -30,7 +31,7 @@ export default async function AdminDisponibilidadePage() {
 
   // Cria um mapa para acesso rápido: disponibilidade[usuario_id][data] = status
   const disponibilidadeMap: { [key: string]: { [key: string]: 'disponivel' | 'indisponivel' } } = {}
-  disponibilidades?.forEach((disp) => {
+  ;(disponibilidades as Disponibilidade[] | null)?.forEach((disp) => {
     if (!disponibilidadeMap[disp.usuario_id]) {
       disponibilidadeMap[disp.usuario_id] = {}
     }
