@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
+import { NovoDiaAtuacao } from '@/types'
 
 // GET - Lista dias de atuação
 export async function GET(request: NextRequest) {
@@ -57,11 +58,13 @@ export async function POST(request: NextRequest) {
       throw new Error('Formato de data inválido. Use YYYY-MM-DD')
     }
 
+    const diaAtuacaoData: NovoDiaAtuacao = {
+      data: dataAtuacao,
+    }
+
     const { data, error } = await supabase
       .from('dias_atuacao')
-      .insert({
-        data: dataAtuacao,
-      })
+      .insert(diaAtuacaoData)
       .select()
       .single()
 

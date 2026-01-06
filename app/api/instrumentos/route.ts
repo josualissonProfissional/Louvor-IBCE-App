@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
+import { NovoInstrumento } from '@/types'
 
 // GET - Lista todos os instrumentos
 export async function GET() {
@@ -33,11 +34,13 @@ export async function POST(request: NextRequest) {
 
     const { nome } = body
 
+    const instrumentoData: NovoInstrumento = {
+      nome,
+    }
+
     const { data, error } = await supabase
       .from('instrumentos')
-      .insert({
-        nome,
-      })
+      .insert(instrumentoData)
       .select()
       .single()
 

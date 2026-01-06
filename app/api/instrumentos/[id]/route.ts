@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
+import { AtualizarInstrumento } from '@/types'
 
 // PUT - Atualiza instrumento
 export async function PUT(
@@ -15,9 +16,13 @@ export async function PUT(
 
     const { nome } = body
 
+    const updateData: AtualizarInstrumento = {
+      nome,
+    }
+
     const { data, error } = await supabase
       .from('instrumentos')
-      .update({ nome })
+      .update(updateData)
       .eq('id', params.id)
       .select()
       .single()

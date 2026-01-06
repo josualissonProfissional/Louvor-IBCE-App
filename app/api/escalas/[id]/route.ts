@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
+import { AtualizarEscala } from '@/types'
 
 // PUT - Atualiza escala
 export async function PUT(
@@ -15,15 +16,17 @@ export async function PUT(
 
     const { data: dataEscala, musica_id, usuario_id, funcao } = body
 
+    const updateData: AtualizarEscala = {
+      data: dataEscala,
+      musica_id,
+      usuario_id,
+      funcao,
+      updated_at: new Date().toISOString(),
+    }
+
     const { data, error } = await supabase
       .from('escalas')
-      .update({
-        data: dataEscala,
-        musica_id,
-        usuario_id,
-        funcao,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', params.id)
       .select()
       .single()

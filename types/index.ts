@@ -21,6 +21,18 @@ export type NovaCifra = Database['public']['Tables']['cifras']['Insert']
 export type NovaLetra = Database['public']['Tables']['letras']['Insert']
 export type NovaEscala = Database['public']['Tables']['escalas']['Insert']
 export type NovaDisponibilidade = Database['public']['Tables']['disponibilidade']['Insert']
+export type NovoInstrumento = Database['public']['Tables']['instrumentos']['Insert']
+export type NovoDiaAtuacao = Database['public']['Tables']['dias_atuacao']['Insert']
+
+// Tipos para atualização
+export type AtualizarUsuario = Database['public']['Tables']['usuarios']['Update']
+export type AtualizarMusica = Database['public']['Tables']['musicas']['Update']
+export type AtualizarCifra = Database['public']['Tables']['cifras']['Update']
+export type AtualizarLetra = Database['public']['Tables']['letras']['Update']
+export type AtualizarEscala = Database['public']['Tables']['escalas']['Update']
+export type AtualizarDisponibilidade = Database['public']['Tables']['disponibilidade']['Update']
+export type AtualizarInstrumento = Database['public']['Tables']['instrumentos']['Update']
+export type AtualizarDiaAtuacao = Database['public']['Tables']['dias_atuacao']['Update']
 
 // Tipos com relacionamentos
 export interface MusicaCompleta extends Musica {

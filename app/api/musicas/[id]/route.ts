@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, requireAdmin } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
+import { AtualizarMusica } from '@/types'
 
 // GET - Busca música específica (qualquer usuário autenticado pode ver)
 export async function GET(
@@ -45,13 +46,15 @@ export async function PUT(
 
     const { titulo, link_youtube } = body
 
+    const updateData: AtualizarMusica = {
+      titulo,
+      link_youtube,
+      updated_at: new Date().toISOString(),
+    }
+
     const { data, error } = await supabase
       .from('musicas')
-      .update({
-        titulo,
-        link_youtube,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', params.id)
       .select()
       .single()

@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
+import { AtualizarDiaAtuacao } from '@/types'
 
 // PUT - Atualiza dia de atuação
 export async function PUT(
@@ -15,9 +16,13 @@ export async function PUT(
 
     const { data: dataAtuacao } = body
 
+    const updateData: AtualizarDiaAtuacao = {
+      data: dataAtuacao,
+    }
+
     const { data, error } = await supabase
       .from('dias_atuacao')
-      .update({ data: dataAtuacao })
+      .update(updateData)
       .eq('id', params.id)
       .select()
       .single()

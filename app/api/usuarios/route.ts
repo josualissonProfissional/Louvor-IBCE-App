@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { generateRandomPassword } from '@/lib/utils'
+import { NovoUsuario } from '@/types'
 
 // GET - Lista todos os usuários
 export async function GET() {
@@ -49,18 +50,20 @@ export async function POST(request: NextRequest) {
     if (authError) throw authError
 
     // Cria registro na tabela usuarios
+    const usuarioData: NovoUsuario = {
+      id: authData.user.id,
+      nome: nome || null,
+      email,
+      senha: senha || generateRandomPassword(), // Em produção, não armazenar senha em texto
+      data_nascimento,
+      cargo,
+      lider: lider || false,
+      instrumento_id: instrumento_id || null,
+    }
+
     const { data, error } = await supabase
       .from('usuarios')
-      .insert({
-        id: authData.user.id,
-        nome: nome || null,
-        email,
-        senha: senha || generateRandomPassword(), // Em produção, não armazenar senha em texto
-        data_nascimento,
-        cargo,
-        lider: lider || false,
-        instrumento_id: instrumento_id || null,
-      })
+      .insert(usuarioData)
       .select()
       .single()
 

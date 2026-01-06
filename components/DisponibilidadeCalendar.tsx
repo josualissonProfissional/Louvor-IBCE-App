@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns'
 import ptBR from 'date-fns/locale/pt-BR'
-import { DiaAtuacao, Disponibilidade } from '@/types'
+import { DiaAtuacao, Disponibilidade, NovaDisponibilidade, AtualizarDisponibilidade } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 
 interface DisponibilidadeCalendarProps {
@@ -57,9 +57,12 @@ export default function DisponibilidadeCalendar({
       if (existing) {
         // Alterna entre disponível e indisponível
         const newStatus = existing.status === 'disponivel' ? 'indisponivel' : 'disponivel'
+        const updateData: AtualizarDisponibilidade = {
+          status: newStatus,
+        }
         const { error } = await supabase
           .from('disponibilidade')
-          .update({ status: newStatus })
+          .update(updateData)
           .eq('id', existing.id)
 
         if (!error) {
@@ -71,13 +74,14 @@ export default function DisponibilidadeCalendar({
         }
       } else {
         // Cria nova disponibilidade como disponível
+        const disponibilidadeData: NovaDisponibilidade = {
+          usuario_id: userId,
+          data: dateStr,
+          status: 'disponivel',
+        }
         const { data, error } = await supabase
           .from('disponibilidade')
-          .insert({
-            usuario_id: userId,
-            data: dateStr,
-            status: 'disponivel',
-          })
+          .insert(disponibilidadeData)
           .select()
           .single()
 

@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { AtualizarUsuario } from '@/types'
 
 // PUT - Atualiza usuário
 export async function PUT(
@@ -25,17 +26,19 @@ export async function PUT(
     }
 
     // Atualiza dados na tabela usuarios
+    const updateData: AtualizarUsuario = {
+      nome: nome || null,
+      email,
+      data_nascimento,
+      cargo,
+      lider,
+      instrumento_id: instrumento_id || null,
+      updated_at: new Date().toISOString(),
+    }
+
     const { data, error } = await supabase
       .from('usuarios')
-      .update({
-        nome: nome || null,
-        email,
-        data_nascimento,
-        cargo,
-        lider,
-        instrumento_id: instrumento_id || null,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', params.id)
       .select()
       .single()

@@ -90,6 +90,7 @@ export interface Database {
           id: string
           texto: string
           musica_id: string
+          titulo: string | null
           created_at: string
           updated_at: string
         }
@@ -97,6 +98,7 @@ export interface Database {
           id?: string
           texto: string
           musica_id: string
+          titulo?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -104,6 +106,7 @@ export interface Database {
           id?: string
           texto?: string
           musica_id?: string
+          titulo?: string | null
           created_at?: string
           updated_at?: string
         }
