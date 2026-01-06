@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
 
     const { data, error } = await supabase
       .from('escalas')
-      .insert(escalaData)
+      .insert(escalaData as any)
       .select()
       .single()
 

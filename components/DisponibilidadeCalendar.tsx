@@ -62,7 +62,7 @@ export default function DisponibilidadeCalendar({
         }
         const { error } = await supabase
           .from('disponibilidade')
-          .update(updateData)
+          .update(updateData as any)
           .eq('id', existing.id)
 
         if (!error) {
@@ -81,7 +81,7 @@ export default function DisponibilidadeCalendar({
         }
         const { data, error } = await supabase
           .from('disponibilidade')
-          .insert(disponibilidadeData)
+          .insert(disponibilidadeData as any)
           .select()
           .single()
 

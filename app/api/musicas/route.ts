@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
 
     const { data: musica, error: musicaError } = await supabase
       .from('musicas')
-      .insert(musicaData)
+      .insert(musicaData as any)
       .select()
       .single()
 
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      await supabase.from('cifras').insert(cifrasData)
+      await supabase.from('cifras').insert(cifrasData as any)
     }
 
     // Adiciona letras se fornecidas
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
         texto,
       }))
 
-      await supabase.from('letras').insert(letrasData)
+      await supabase.from('letras').insert(letrasData as any)
     }
 
     return NextResponse.json(musica, { status: 201 })

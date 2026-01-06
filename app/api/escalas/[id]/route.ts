@@ -26,7 +26,7 @@ export async function PUT(
 
     const { data, error } = await supabase
       .from('escalas')
-      .update(updateData)
+      .update(updateData as any)
       .eq('id', params.id)
       .select()
       .single()

@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     const { data, error } = await supabase
       .from('cifras')
-      .insert(cifraData)
+      .insert(cifraData as any)
       .select()
       .single()
 

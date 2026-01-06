@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     const { data, error } = await supabase
       .from('letras')
-      .insert(letraData)
+      .insert(letraData as any)
       .select()
       .single()
 
