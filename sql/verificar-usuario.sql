@@ -42,3 +42,4 @@ WHERE au.email = 'josualisson17@gmail.com';
 SET request.jwt.claim.sub = '51206994-1fc7-4dec-a7af-135b064a7531';
 SELECT * FROM usuarios WHERE id = '51206994-1fc7-4dec-a7af-135b064a7531';
 
+

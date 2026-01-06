@@ -189,3 +189,4 @@ CREATE POLICY "Usuários podem atualizar sua própria disponibilidade" ON dispon
 
 
 
+

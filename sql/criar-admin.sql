@@ -32,3 +32,4 @@ INSERT INTO usuarios (
 
 -- Após executar, você poderá fazer login com o email e senha criados no Authentication
 
+

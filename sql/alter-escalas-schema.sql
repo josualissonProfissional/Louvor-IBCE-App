@@ -43,3 +43,4 @@ FROM information_schema.columns
 WHERE table_name = 'escalas'
 ORDER BY ordinal_position;
 
+
