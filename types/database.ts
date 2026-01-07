@@ -13,6 +13,7 @@ export interface Database {
       usuarios: {
         Row: {
           id: string
+          nome: string | null
           email: string
           senha: string
           data_nascimento: string
@@ -24,6 +25,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          nome?: string | null
           email: string
           senha: string
           data_nascimento: string
@@ -35,6 +37,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          nome?: string | null
           email?: string
           senha?: string
           data_nascimento?: string
