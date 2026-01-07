@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, requireAdmin } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
-import { NovaMusica, NovaCifra, NovaLetra } from '@/types'
+import { NovaMusica, NovaCifra, NovaLetra, Musica } from '@/types'
 
 // GET - Lista todas as músicas
 export async function GET() {
@@ -45,13 +45,15 @@ export async function POST(request: NextRequest) {
       link_youtube: link_youtube || null,
     }
 
-    const { data: musica, error: musicaError } = await supabase
+    const { data: musicaDataResult, error: musicaError } = await supabase
       .from('musicas')
       .insert(musicaData as any)
       .select()
       .single()
 
     if (musicaError) throw musicaError
+
+    const musica = musicaDataResult as Musica
 
     // Adiciona cifras se fornecidas
     if (cifras && cifras.length > 0) {
