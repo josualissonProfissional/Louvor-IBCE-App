@@ -215,7 +215,7 @@ export default function MusicaModal({ musica, isOpen, onClose }: MusicaModalProp
                     <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Carregando cifra...</p>
                   </div>
                 ) : musicaCompleta && musicaCompleta.cifras.length > 0 ? (
-                  <CifraViewerInline musica={musicaCompleta} selectedIndex={selectedCifraIndex} />
+                  <CifraViewerInline musica={musicaCompleta} />
                 ) : (
                   <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                     <p>Cifra não encontrada.</p>
