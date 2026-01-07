@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import DashboardClient from '@/components/DashboardClient'
+import { Usuario } from '@/types'
 
 export default async function HomePage() {
   const user = await getCurrentUser()
@@ -64,7 +65,7 @@ export default async function HomePage() {
     .select('id, nome, email, data_nascimento, instrumento:instrumentos(nome)')
 
   // Filtra apenas usuários com data_nascimento válida
-  const aniversariantes = todosUsuarios?.filter((usuario) => {
+  const aniversariantes = (todosUsuarios as Usuario[] | null)?.filter((usuario) => {
     return usuario.data_nascimento !== null && usuario.data_nascimento !== undefined
   }) || []
 
