@@ -60,9 +60,9 @@ export default function DisponibilidadeCalendar({
         const updateData: AtualizarDisponibilidade = {
           status: newStatus,
         }
-        const { error } = await supabase
-          .from('disponibilidade')
-          .update(updateData as any)
+        const query = supabase.from('disponibilidade') as any
+        const { error } = await query
+          .update(updateData)
           .eq('id', existing.id)
 
         if (!error) {

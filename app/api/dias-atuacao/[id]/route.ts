@@ -20,9 +20,9 @@ export async function PUT(
       data: dataAtuacao,
     }
 
-    const { data, error } = await supabase
-      .from('dias_atuacao')
-      .update(updateData as any)
+    const query = supabase.from('dias_atuacao') as any
+    const { data, error } = await query
+      .update(updateData)
       .eq('id', params.id)
       .select()
       .single()

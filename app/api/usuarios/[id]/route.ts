@@ -36,9 +36,9 @@ export async function PUT(
       updated_at: new Date().toISOString(),
     }
 
-    const { data, error } = await supabase
-      .from('usuarios')
-      .update(updateData as any)
+    const query = supabase.from('usuarios') as any
+    const { data, error } = await query
+      .update(updateData)
       .eq('id', params.id)
       .select()
       .single()
