@@ -293,7 +293,6 @@ export default function MusicaModal({ musica, isOpen, onClose }: MusicaModalProp
                   <button
                     onClick={() => {
                       setVideo(youtubeId, musica.titulo)
-                      setMostrarVideo(false)
                     }}
                     className="bg-red-500 hover:bg-red-600 text-white px-6 py-4 rounded-lg text-center font-semibold transition-all duration-200 transform hover:scale-105 hover:shadow-lg flex items-center justify-center gap-2"
                   >
