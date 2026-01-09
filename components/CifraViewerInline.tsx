@@ -1,7 +1,8 @@
 'use client'
 
 // Componente inline para visualização de cifra com controles de acessibilidade
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
 
 // Função auxiliar para transpor uma nota
 function transposeNote(note: string, semitones: number): string {
@@ -116,16 +117,147 @@ export default function CifraViewerInline({ musica }: CifraViewerInlineProps) {
   const [isBold, setIsBold] = useState(false)
   const [fontFamily, setFontFamily] = useState('inherit')
   const [isAccordionOpen, setIsAccordionOpen] = useState(false)
+  const [user, setUser] = useState<{ lider?: boolean } | null>(null)
+  const [editingCifra, setEditingCifra] = useState<Cifra | null>(null)
+  const [showAddCifra, setShowAddCifra] = useState(false)
+  const [cifras, setCifras] = useState(musica.cifras)
 
-  if (!musica.cifras || musica.cifras.length === 0) {
+  const isAdmin = user?.lider === true
+
+  // Carrega dados do usuário (mesma lógica do Header)
+  useEffect(() => {
+    async function loadUser() {
+      const supabase = createClient()
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser()
+
+      if (authUser) {
+        const { data } = await supabase
+          .from('usuarios')
+          .select('*')
+          .eq('id', authUser.id)
+          .single()
+        setUser(data)
+      } else {
+        setUser(null)
+      }
+    }
+    loadUser()
+  }, [])
+
+  // Atualiza cifras quando a prop muda
+  useEffect(() => {
+    setCifras(musica.cifras)
+  }, [musica.cifras])
+
+  const handleDeleteCifra = async (cifraId: string) => {
+    if (!confirm('Tem certeza que deseja deletar esta cifra?')) return
+
+    try {
+      const response = await fetch(`/api/cifras/${cifraId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        const novasCifras = cifras.filter(c => c.id !== cifraId)
+        setCifras(novasCifras)
+        if (selectedIndex >= novasCifras.length && novasCifras.length > 0) {
+          setSelectedIndex(novasCifras.length - 1)
+        } else if (novasCifras.length === 0) {
+          setSelectedIndex(0)
+        }
+        alert('Cifra deletada com sucesso!')
+        // Recarrega a página para atualizar os dados
+        window.location.reload()
+      } else {
+        const error = await response.json()
+        alert(`Erro ao deletar cifra: ${error.error}`)
+      }
+    } catch (error) {
+      console.error('Erro ao deletar cifra:', error)
+      alert('Erro ao deletar cifra')
+    }
+  }
+
+  const handleSaveCifra = async (texto: string, titulo?: string) => {
+    try {
+      if (editingCifra) {
+        // Editar cifra existente
+        const response = await fetch(`/api/cifras/${editingCifra.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ texto, titulo: titulo || null }),
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          const novasCifras = cifras.map(c => c.id === editingCifra.id ? data : c)
+          setCifras(novasCifras)
+          setEditingCifra(null)
+          alert('Cifra atualizada com sucesso!')
+          window.location.reload()
+        } else {
+          const error = await response.json()
+          alert(`Erro ao atualizar cifra: ${error.error}`)
+        }
+      } else {
+        // Adicionar nova cifra
+        const response = await fetch('/api/cifras', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ musica_id: musica.id, texto, titulo: titulo || null }),
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          setCifras([...cifras, data])
+          setShowAddCifra(false)
+          setSelectedIndex(cifras.length)
+          alert('Cifra adicionada com sucesso!')
+          window.location.reload()
+        } else {
+          const error = await response.json()
+          alert(`Erro ao adicionar cifra: ${error.error}`)
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao salvar cifra:', error)
+      alert('Erro ao salvar cifra')
+    }
+  }
+
+  if (!cifras || cifras.length === 0) {
     return (
-      <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-        Cifra não encontrada.
+      <div className="space-y-4">
+        {isAdmin && (
+          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border-2 border-dashed border-gray-300 dark:border-gray-600">
+            <button
+              onClick={() => setShowAddCifra(true)}
+              className="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Adicionar Primeira Cifra
+            </button>
+          </div>
+        )}
+        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+          Cifra não encontrada.
+        </div>
+        {showAddCifra && (
+          <CifraEditorModal
+            cifra={null}
+            onSave={handleSaveCifra}
+            onClose={() => setShowAddCifra(false)}
+          />
+        )}
       </div>
     )
   }
 
-  const cifra = musica.cifras[selectedIndex]
+  const cifra = cifras[selectedIndex]
 
   // Função para transpor apenas acordes reais (não letras dentro de palavras)
   const transposeOnlyChords = (text: string, semitones: number): string => {
@@ -294,8 +426,55 @@ export default function CifraViewerInline({ musica }: CifraViewerInlineProps) {
 
   return (
     <div className="space-y-6">
+      {/* Painel de Gerenciamento (Admin) */}
+      {isAdmin && (
+        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border-2 border-dashed border-gray-300 dark:border-gray-600">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-semibold text-gray-900 dark:text-white">
+              Gerenciar Cifras ({cifras.length})
+            </span>
+            <button
+              onClick={() => setShowAddCifra(true)}
+              className="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Adicionar
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {cifras.map((c, index) => (
+              <div key={c.id} className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg p-2 shadow-sm">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {c.titulo || `Versão ${index + 1}`}
+                </span>
+                <button
+                  onClick={() => setEditingCifra(c)}
+                  className="text-blue-500 hover:text-blue-600 p-1.5 rounded transition-colors hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                  title="Editar cifra"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => handleDeleteCifra(c.id)}
+                  className="text-red-500 hover:text-red-600 p-1.5 rounded transition-colors hover:bg-red-50 dark:hover:bg-red-900/20"
+                  title="Deletar cifra"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Seletor de Versão */}
-      {musica.cifras.length > 1 && (
+      {cifras.length > 1 && (
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Versão:
@@ -308,8 +487,8 @@ export default function CifraViewerInline({ musica }: CifraViewerInlineProps) {
             }}
             className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           >
-            {musica.cifras.map((cifra: Cifra, index: number) => (
-              <option key={index} value={index}>
+            {cifras.map((cifra: Cifra, index: number) => (
+              <option key={cifra.id} value={index}>
                 {cifra.titulo || `Versão ${index + 1}`}
               </option>
             ))}
@@ -481,7 +660,7 @@ export default function CifraViewerInline({ musica }: CifraViewerInlineProps) {
 
       {/* Cifra */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        {(musica.cifras.length > 1 || cifra.titulo) && (
+        {(cifras.length > 1 || cifra.titulo) && (
           <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
             {cifra.titulo || `Versão ${selectedIndex + 1}`}
           </h2>
@@ -496,6 +675,109 @@ export default function CifraViewerInline({ musica }: CifraViewerInlineProps) {
           }}
         >
           {renderCifraWithColoredChords(transposedCifra)}
+        </div>
+      </div>
+
+      {/* Modal de Editar/Adicionar Cifra */}
+      {(editingCifra || showAddCifra) && (
+        <CifraEditorModal
+          cifra={editingCifra}
+          onSave={handleSaveCifra}
+          onClose={() => {
+            setEditingCifra(null)
+            setShowAddCifra(false)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+// Modal para editar/adicionar cifra
+function CifraEditorModal({
+  cifra,
+  onSave,
+  onClose,
+}: {
+  cifra: Cifra | null
+  onSave: (texto: string, titulo?: string) => void
+  onClose: () => void
+}) {
+  const [texto, setTexto] = useState(cifra?.texto || '')
+  const [titulo, setTitulo] = useState(cifra?.titulo || '')
+
+  return (
+    <div
+      className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60] p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+              {cifra ? 'Editar Cifra' : 'Adicionar Cifra'}
+            </h3>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full p-2 transition-all duration-200"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Título (opcional):
+              </label>
+              <input
+                type="text"
+                value={titulo}
+                onChange={(e) => setTitulo(e.target.value)}
+                placeholder="Ex: Cifra para Baixo, Cifra para Violão"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Texto da Cifra:
+              </label>
+              <textarea
+                value={texto}
+                onChange={(e) => setTexto(e.target.value)}
+                rows={15}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono"
+                placeholder="Cole ou digite a cifra aqui..."
+              />
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  if (texto.trim()) {
+                    onSave(texto, titulo || undefined)
+                  } else {
+                    alert('Por favor, preencha o texto da cifra')
+                  }
+                }}
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-light transition-colors"
+              >
+                Salvar
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -11,11 +11,12 @@ export async function POST(request: NextRequest) {
     const supabase = createServerClient()
     const body = await request.json()
 
-    const { musica_id, texto } = body
+    const { musica_id, texto, titulo } = body
 
     const cifraData: NovaCifra = {
       musica_id,
       texto,
+      titulo: titulo || null,
     }
 
     const { data, error } = await supabase
