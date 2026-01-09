@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react'
 import { extractYouTubeId } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { useYouTubePlayer } from './YouTubePlayer'
 import LetraViewerInline from './LetraViewerInline'
 import CifraViewerInline from './CifraViewerInline'
 
@@ -28,7 +29,6 @@ interface MusicaCompleta {
 }
 
 export default function MusicaModal({ musica, isOpen, onClose }: MusicaModalProps) {
-  const [mostrarVideo, setMostrarVideo] = useState(false)
   const [viewType, setViewType] = useState<'letra' | 'cifra' | null>(null)
   const [musicaCompleta, setMusicaCompleta] = useState<MusicaCompleta | null>(null)
   const [loading, setLoading] = useState(false)
@@ -39,6 +39,7 @@ export default function MusicaModal({ musica, isOpen, onClose }: MusicaModalProp
   const [editingLetra, setEditingLetra] = useState<{ id: string; texto: string } | null>(null)
   const [showAddCifra, setShowAddCifra] = useState(false)
   const [showAddLetra, setShowAddLetra] = useState(false)
+  const { setVideo } = useYouTubePlayer()
 
   const youtubeId = musica.link_youtube ? extractYouTubeId(musica.link_youtube) : null
   const isAdmin = user?.lider === true
@@ -216,17 +217,14 @@ export default function MusicaModal({ musica, isOpen, onClose }: MusicaModalProp
 
   const handleViewLetra = () => {
     setViewType('letra')
-    setMostrarVideo(false)
   }
 
   const handleViewCifra = () => {
     setViewType('cifra')
-    setMostrarVideo(false)
   }
 
   const handleBackToOptions = () => {
     setViewType(null)
-    setMostrarVideo(false)
   }
 
   if (!isOpen) return null
@@ -265,7 +263,7 @@ export default function MusicaModal({ musica, isOpen, onClose }: MusicaModalProp
 
           <div className="space-y-4">
             {/* Opções */}
-            {!mostrarVideo && !viewType && (
+            {!viewType && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {musica.temLetras && (
                   <button
@@ -293,7 +291,10 @@ export default function MusicaModal({ musica, isOpen, onClose }: MusicaModalProp
 
                 {youtubeId && (
                   <button
-                    onClick={() => setMostrarVideo(true)}
+                    onClick={() => {
+                      setVideo(youtubeId, musica.titulo)
+                      setMostrarVideo(false)
+                    }}
                     className="bg-red-500 hover:bg-red-600 text-white px-6 py-4 rounded-lg text-center font-semibold transition-all duration-200 transform hover:scale-105 hover:shadow-lg flex items-center justify-center gap-2"
                   >
                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -305,33 +306,6 @@ export default function MusicaModal({ musica, isOpen, onClose }: MusicaModalProp
               </div>
             )}
 
-            {/* Video do YouTube */}
-            {mostrarVideo && youtubeId && (
-              <div className="space-y-4">
-                <button
-                  onClick={handleBackToOptions}
-                  className="text-primary hover:underline text-sm flex items-center gap-2 transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                  Voltar para opções
-                </button>
-                <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
-                  <iframe
-                    width="100%"
-                    height="100%"
-                    src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1`}
-                    title="YouTube video player"
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    referrerPolicy="strict-origin-when-cross-origin"
-                    allowFullScreen
-                    className="absolute top-0 left-0 w-full h-full rounded-lg"
-                  />
-                </div>
-              </div>
-            )}
 
             {/* Letra */}
             {viewType === 'letra' && (
@@ -508,7 +482,7 @@ export default function MusicaModal({ musica, isOpen, onClose }: MusicaModalProp
             )}
 
             {/* Mensagem se não houver opções */}
-            {!mostrarVideo && !viewType && !musica.temLetras && !musica.temCifras && !youtubeId && (
+            {!viewType && !musica.temLetras && !musica.temCifras && !youtubeId && (
               <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 <p>Nenhuma opção disponível para esta música.</p>
               </div>

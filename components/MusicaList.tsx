@@ -3,6 +3,7 @@
 // Lista de músicas com popup de opções
 import { useState } from 'react'
 import { MusicaCompleta } from '@/types'
+import { useYouTubePlayer } from './YouTubePlayer'
 import LetraViewer from './LetraViewer'
 import CifraViewerInline from './CifraViewerInline'
 
@@ -13,8 +14,8 @@ interface MusicaListProps {
 
 export default function MusicaList({ musicas, isAdmin }: MusicaListProps) {
   const [selectedMusica, setSelectedMusica] = useState<MusicaCompleta | null>(null)
-  const [showYoutubeModal, setShowYoutubeModal] = useState(false)
   const [viewType, setViewType] = useState<'letra' | 'cifra' | null>(null)
+  const { setVideo } = useYouTubePlayer()
   
   // Estados para busca e filtros
   const [searchTerm, setSearchTerm] = useState('')
@@ -37,7 +38,6 @@ export default function MusicaList({ musicas, isAdmin }: MusicaListProps) {
 
   const closeModal = () => {
     setSelectedMusica(null)
-    setShowYoutubeModal(false)
     setViewType(null)
   }
 
@@ -62,8 +62,11 @@ export default function MusicaList({ musicas, isAdmin }: MusicaListProps) {
   }
 
   const handleViewYouTube = (musica: MusicaCompleta) => {
-    setSelectedMusica(musica)
-    setShowYoutubeModal(true)
+    const videoId = getYouTubeVideoId(musica.link_youtube || '')
+    if (videoId) {
+      setVideo(videoId, musica.titulo)
+      closeModal()
+    }
   }
 
   // Função para filtrar músicas
@@ -95,11 +98,6 @@ export default function MusicaList({ musicas, isAdmin }: MusicaListProps) {
       </div>
     )
   }
-
-  // Calcular videoId do YouTube se necessário
-  const youtubeVideoId = selectedMusica && showYoutubeModal && selectedMusica.link_youtube
-    ? getYouTubeVideoId(selectedMusica.link_youtube)
-    : null
 
   return (
     <>
@@ -346,54 +344,6 @@ export default function MusicaList({ musicas, isAdmin }: MusicaListProps) {
         </div>
       )}
 
-      {/* Modal do YouTube */}
-      {selectedMusica && showYoutubeModal && youtubeVideoId && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 backdrop-blur-sm animate-fade-in"
-          onClick={closeModal}
-        >
-          <div 
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 max-w-4xl w-full mx-4 transform transition-all duration-300 scale-100 animate-slide-in-up"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header com título e botão de fechar */}
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex-1">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                  {selectedMusica.titulo}
-                </h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Reproduzindo no YouTube
-                </p>
-              </div>
-              <button
-                onClick={closeModal}
-                className="ml-4 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-all duration-200"
-                aria-label="Fechar"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Iframe do YouTube */}
-            <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
-              <iframe
-                width="100%"
-                height="100%"
-                src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1`}
-                title="YouTube video player"
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                referrerPolicy="strict-origin-when-cross-origin"
-                allowFullScreen
-                className="absolute top-0 left-0 w-full h-full rounded-lg"
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </>
   )
 }

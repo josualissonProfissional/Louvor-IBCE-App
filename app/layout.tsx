@@ -4,6 +4,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { Header } from '@/components/Header'
+import { YouTubePlayerProvider } from '@/components/YouTubePlayer'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -33,10 +34,12 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} overflow-x-hidden`}>
         <ThemeProvider>
-          <Header />
-          <main className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
-            {children}
-          </main>
+          <YouTubePlayerProvider>
+            <Header />
+            <main className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
+              {children}
+            </main>
+          </YouTubePlayerProvider>
         </ThemeProvider>
       </body>
     </html>
