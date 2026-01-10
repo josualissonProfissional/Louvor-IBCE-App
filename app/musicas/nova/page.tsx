@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import RichTextEditor from '@/components/RichTextEditor'
 
 export default function NovaMusicaPage() {
   const router = useRouter()
@@ -74,14 +75,16 @@ export default function NovaMusicaPage() {
         }))
       }
     } else {
+      // Converter quebras de linha para <br> tags para o editor rico
+      const htmlText = text.replace(/\n/g, '<br>')
       if (index !== undefined) {
         const newLetras = [...formData.letras]
-        newLetras[index] = text
+        newLetras[index] = htmlText
         setFormData(prev => ({ ...prev, letras: newLetras }))
       } else {
         setFormData(prev => ({
           ...prev,
-          letras: [...prev.letras, text],
+          letras: [...prev.letras, htmlText],
         }))
       }
     }
@@ -303,25 +306,24 @@ export default function NovaMusicaPage() {
                       e.stopPropagation()
                     }}
                     onDrop={(e) => handleDrop(e, 'letra', index)}
-                    className={`relative border-2 border-dashed rounded-lg transition-all duration-300 ${
+                    className={`relative transition-all duration-300 ${
                       dragActiveLetra === index
-                        ? 'border-primary bg-primary/10 scale-105'
-                        : 'border-gray-300 dark:border-gray-600 hover:border-primary/50'
+                        ? 'scale-105'
+                        : ''
                     }`}
                   >
-                    <textarea
+                    <RichTextEditor
                       value={letra}
-                      onChange={(e) => {
+                      onChange={(value) => {
                         const newLetras = [...formData.letras]
-                        newLetras[index] = e.target.value
+                        newLetras[index] = value
                         setFormData(prev => ({ ...prev, letras: newLetras }))
                       }}
                       rows={12}
-                      className="w-full px-4 py-3 border-0 rounded-lg bg-transparent text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-                      placeholder="Cole a letra aqui ou arraste e solte um arquivo .txt"
+                      placeholder="Digite ou cole a letra aqui. Use os botões acima para formatar o texto (negrito, itálico, etc.) ou arraste e solte um arquivo .txt"
                     />
                     {dragActiveLetra === index && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-primary/20 rounded-lg pointer-events-none">
+                      <div className="absolute inset-0 flex items-center justify-center bg-primary/20 rounded-lg pointer-events-none z-10">
                         <div className="text-center">
                           <svg className="w-12 h-12 mx-auto mb-2 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />

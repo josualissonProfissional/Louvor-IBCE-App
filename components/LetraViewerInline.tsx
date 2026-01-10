@@ -428,9 +428,8 @@ export default function LetraViewerInline({ musica, selectedIndex: initialIndex 
             lineHeight: '1.6',
             ...getTextColorStyle(),
           }}
-        >
-          {letra.texto}
-        </div>
+          dangerouslySetInnerHTML={{ __html: letra.texto || '' }}
+        />
       </div>
 
       {/* Modal de Editar/Adicionar Letra */}

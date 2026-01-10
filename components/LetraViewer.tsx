@@ -398,9 +398,8 @@ export default function LetraViewer({ musica }: LetraViewerProps) {
                 lineHeight: '1.6',
                 ...getTextColorStyle(),
               }}
-            >
-              {letra.texto}
-            </div>
+              dangerouslySetInnerHTML={{ __html: letra.texto || '' }}
+            />
           </div>
         ))
       ) : (
