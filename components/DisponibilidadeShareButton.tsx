@@ -97,11 +97,17 @@ export default function DisponibilidadeShareButton({
       return
     }
 
+    if (typeof window === 'undefined') {
+      alert('❌ Esta funcionalidade só está disponível no navegador.')
+      return
+    }
+
     setIsGeneratingImage(true)
 
     try {
-      // Importar html2canvas dinamicamente
-      const html2canvas = (await import('html2canvas')).default
+      // Importar html2canvas dinamicamente apenas no cliente
+      const html2canvasModule = await import('html2canvas')
+      const html2canvas = html2canvasModule.default || html2canvasModule
 
       // Aguardar um pouco para garantir que a tabela está renderizada
       await new Promise(resolve => setTimeout(resolve, 100))
