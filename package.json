@@ -19,7 +19,8 @@
     "react-modal": "^3.16.1",
     "zod": "^3.22.4",
     "clsx": "^2.0.0",
-    "tailwind-merge": "^2.2.0"
+    "tailwind-merge": "^2.2.0",
+    "html2canvas": "^1.4.1"
   },
   "devDependencies": {
     "@types/node": "^20.10.6",
