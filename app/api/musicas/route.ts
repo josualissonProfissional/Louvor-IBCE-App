@@ -63,7 +63,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Cria a música com links do YouTube no campo JSONB
-    const musicaData: NovaMusica = {
+    // Usa 'as any' porque link_youtube agora é JSONB (array), não string
+    const musicaData = {
       titulo,
       link_youtube: linksYouTubeArray, // Agora é um array JSONB
     }
