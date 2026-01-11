@@ -35,9 +35,19 @@ export type AtualizarInstrumento = Database['public']['Tables']['instrumentos'][
 export type AtualizarDiaAtuacao = Database['public']['Tables']['dias_atuacao']['Update']
 
 // Tipos com relacionamentos
+export interface LinkYouTube {
+  id: string
+  musica_id: string
+  url: string
+  titulo: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface MusicaCompleta extends Musica {
   cifras: Cifra[]
   letras: Letra[]
+  links_youtube?: LinkYouTube[]
 }
 
 export interface EscalaCompleta extends Escala {

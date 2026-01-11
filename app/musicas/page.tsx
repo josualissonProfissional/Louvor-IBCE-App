@@ -3,17 +3,20 @@ import { createServerClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/auth'
 import MusicaList from '@/components/MusicaList'
 
+export const revalidate = 0 // Desabilita cache para sempre buscar dados atualizados
+
 export default async function MusicasPage() {
   const supabase = createServerClient()
   const user = await getCurrentUser()
 
-  // Busca todas as músicas com suas cifras e letras (acesso público)
+  // Busca todas as músicas com suas cifras, letras e links do YouTube (acesso público)
   const { data: musicas, error } = await supabase
     .from('musicas')
     .select(`
       *,
       cifras(*),
-      letras(*)
+      letras(*),
+      links_youtube(*)
     `)
     .order('titulo', { ascending: true })
 
