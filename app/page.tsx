@@ -5,6 +5,8 @@ import { createServerClient } from '@/lib/supabase/server'
 import DashboardClient from '@/components/DashboardClient'
 import { Usuario } from '@/types'
 
+export const revalidate = 0 // Desabilita cache para sempre buscar dados atualizados
+
 export default async function HomePage() {
   const user = await getCurrentUser()
   

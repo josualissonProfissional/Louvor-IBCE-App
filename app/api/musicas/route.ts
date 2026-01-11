@@ -37,12 +37,36 @@ export async function POST(request: NextRequest) {
     const supabase = createServerClient()
     const body = await request.json()
 
-    const { titulo, link_youtube, cifras, letras } = body
+    const { titulo, link_youtube, links_youtube, cifras, letras } = body
 
-    // Cria a música
-    const musicaData: NovaMusica = {
+    // Prepara os links do YouTube no formato JSONB
+    let linksYouTubeArray: any[] = []
+    
+    if (links_youtube && Array.isArray(links_youtube) && links_youtube.length > 0) {
+      // Formato novo: array de objetos
+      linksYouTubeArray = links_youtube.map((link: any, index: number) => ({
+        id: link.id || `link-${Date.now()}-${index}`,
+        url: typeof link === 'string' ? link : link.url,
+        titulo: typeof link === 'string' ? null : (link.titulo || null),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }))
+    } else if (link_youtube && link_youtube.trim() !== '') {
+      // Formato antigo: string única
+      linksYouTubeArray = [{
+        id: `link-${Date.now()}`,
+        url: link_youtube.trim(),
+        titulo: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }]
+    }
+
+    // Cria a música com links do YouTube no campo JSONB
+    // Usa 'as any' porque link_youtube agora é JSONB (array), não string
+    const musicaData = {
       titulo,
-      link_youtube: link_youtube || null,
+      link_youtube: linksYouTubeArray, // Agora é um array JSONB
     }
 
     const { data: musicaDataResult, error: musicaError } = await supabase

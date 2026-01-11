@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import RichTextEditor from '@/components/RichTextEditor'
 
 interface Letra {
   id: string
@@ -479,12 +480,11 @@ function LetraEditorModal({
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Texto da Letra:
               </label>
-              <textarea
+              <RichTextEditor
                 value={texto}
-                onChange={(e) => setTexto(e.target.value)}
+                onChange={setTexto}
                 rows={15}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                placeholder="Cole ou digite a letra aqui..."
+                placeholder="Cole ou digite a letra aqui. Use os botões acima para formatar o texto (negrito, itálico, cores, etc.)"
               />
             </div>
 
@@ -497,7 +497,9 @@ function LetraEditorModal({
               </button>
               <button
                 onClick={() => {
-                  if (texto.trim()) {
+                  // Remove tags HTML e verifica se há conteúdo
+                  const textContent = texto.replace(/<[^>]*>/g, '').trim()
+                  if (textContent) {
                     onSave(texto)
                   } else {
                     alert('Por favor, preencha o texto da letra')

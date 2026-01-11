@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useYouTubePlayer } from './YouTubePlayer'
 import LetraViewerInline from './LetraViewerInline'
 import CifraViewerInline from './CifraViewerInline'
+import RichTextEditor from '@/components/RichTextEditor'
 
 interface MusicaModalProps {
   musica: {
@@ -18,6 +19,16 @@ interface MusicaModalProps {
   }
   isOpen: boolean
   onClose: () => void
+  initialView?: 'letra' | 'cifra' | 'youtube' | null
+}
+
+interface LinkYouTube {
+  id: string
+  musica_id: string
+  url: string
+  titulo: string | null
+  created_at: string
+  updated_at: string
 }
 
 interface MusicaCompleta {
@@ -26,10 +37,11 @@ interface MusicaCompleta {
   link_youtube: string | null
   letras: Array<{ id: string; texto: string }>
   cifras: Array<{ id: string; texto: string; titulo?: string | null }>
+  links_youtube?: LinkYouTube[]
 }
 
-export default function MusicaModal({ musica, isOpen, onClose }: MusicaModalProps) {
-  const [viewType, setViewType] = useState<'letra' | 'cifra' | null>(null)
+export default function MusicaModal({ musica, isOpen, onClose, initialView = null }: MusicaModalProps) {
+  const [viewType, setViewType] = useState<'letra' | 'cifra' | 'youtube' | null>(null)
   const [musicaCompleta, setMusicaCompleta] = useState<MusicaCompleta | null>(null)
   const [loading, setLoading] = useState(false)
   const [selectedLetraIndex, setSelectedLetraIndex] = useState(0)
@@ -39,9 +51,12 @@ export default function MusicaModal({ musica, isOpen, onClose }: MusicaModalProp
   const [editingLetra, setEditingLetra] = useState<{ id: string; texto: string } | null>(null)
   const [showAddCifra, setShowAddCifra] = useState(false)
   const [showAddLetra, setShowAddLetra] = useState(false)
+  const [linksYouTube, setLinksYouTube] = useState<LinkYouTube[]>([])
+  const [showAddLinkForm, setShowAddLinkForm] = useState(false)
+  const [newLinkUrl, setNewLinkUrl] = useState('')
+  const [newLinkTitulo, setNewLinkTitulo] = useState('')
   const { setVideo } = useYouTubePlayer()
 
-  const youtubeId = musica.link_youtube ? extractYouTubeId(musica.link_youtube) : null
   const isAdmin = user?.lider === true
 
   // Carrega dados do usuário (mesma lógica do Header)
@@ -73,8 +88,52 @@ export default function MusicaModal({ musica, isOpen, onClose }: MusicaModalProp
   useEffect(() => {
     if (isOpen) {
       loadMusicaCompleta()
+      // Define a view inicial se especificada
+      if (initialView) {
+        setViewType(initialView)
+      } else {
+        setViewType(null)
+      }
+    } else {
+      // Reseta a view quando o modal fecha
+      setViewType(null)
     }
-  }, [isOpen, musica.id])
+  }, [isOpen, musica.id, initialView])
+
+  // Carrega links quando a música completa é carregada
+  useEffect(() => {
+    if (musicaCompleta) {
+      loadLinksYouTube()
+    }
+  }, [musicaCompleta])
+
+  // Carrega links do YouTube
+  const loadLinksYouTube = async () => {
+    try {
+      // Primeiro tenta usar os links que já vêm na música (se disponível)
+      if (musicaCompleta?.link_youtube && Array.isArray(musicaCompleta.link_youtube)) {
+        const links = musicaCompleta.link_youtube.map((link: any, index: number) => ({
+          id: link.id || `link-${index}`,
+          musica_id: musica.id,
+          url: typeof link === 'string' ? link : link.url,
+          titulo: typeof link === 'string' ? null : (link.titulo || null),
+          created_at: link.created_at || new Date().toISOString(),
+          updated_at: link.updated_at || new Date().toISOString(),
+        }))
+        setLinksYouTube(links)
+        return
+      }
+
+      // Se não houver links na música completa, busca via API
+      const response = await fetch(`/api/musicas/${musica.id}/links-youtube`)
+      if (response.ok) {
+        const links = await response.json()
+        setLinksYouTube(links || [])
+      }
+    } catch (error) {
+      console.error('Erro ao carregar links do YouTube:', error)
+    }
+  }
 
   const loadMusicaCompleta = async () => {
     try {
@@ -264,36 +323,34 @@ export default function MusicaModal({ musica, isOpen, onClose }: MusicaModalProp
           <div className="space-y-4">
             {/* Opções */}
             {!viewType && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {musica.temLetras && (
-                  <button
-                    onClick={handleViewLetra}
-                    className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-4 rounded-lg text-center font-semibold transition-all duration-200 transform hover:scale-105 hover:shadow-lg flex items-center justify-center gap-2"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <span>Ver Letra</span>
-                  </button>
-                )}
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {musica.temLetras && (
+                    <button
+                      onClick={handleViewLetra}
+                      className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-4 rounded-lg text-center font-semibold transition-all duration-200 transform hover:scale-105 hover:shadow-lg flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span>Ver Letra</span>
+                    </button>
+                  )}
 
-                {musica.temCifras && (
-                  <button
-                    onClick={handleViewCifra}
-                    className="bg-green-500 hover:bg-green-600 text-white px-6 py-4 rounded-lg text-center font-semibold transition-all duration-200 transform hover:scale-105 hover:shadow-lg flex items-center justify-center gap-2"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                    </svg>
-                    <span>Ver Cifra</span>
-                  </button>
-                )}
+                  {musica.temCifras && (
+                    <button
+                      onClick={handleViewCifra}
+                      className="bg-green-500 hover:bg-green-600 text-white px-6 py-4 rounded-lg text-center font-semibold transition-all duration-200 transform hover:scale-105 hover:shadow-lg flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                      </svg>
+                      <span>Ver Cifra</span>
+                    </button>
+                  )}
 
-                {youtubeId && (
                   <button
-                    onClick={() => {
-                      setVideo(youtubeId, musica.titulo)
-                    }}
+                    onClick={() => setViewType('youtube')}
                     className="bg-red-500 hover:bg-red-600 text-white px-6 py-4 rounded-lg text-center font-semibold transition-all duration-200 transform hover:scale-105 hover:shadow-lg flex items-center justify-center gap-2"
                   >
                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -301,6 +358,85 @@ export default function MusicaModal({ musica, isOpen, onClose }: MusicaModalProp
                     </svg>
                     <span>Ouvir Música</span>
                   </button>
+                </div>
+
+                {/* Botão de adicionar link (apenas admin) */}
+                {isAdmin && (
+                  <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
+                    {!showAddLinkForm ? (
+                      <button
+                        onClick={() => setShowAddLinkForm(true)}
+                        className="w-full bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg text-center font-semibold transition-all duration-200 flex items-center justify-center gap-2"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span>Adicionar Link do YouTube</span>
+                      </button>
+                    ) : (
+                      <div className="space-y-2 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                        <input
+                          type="text"
+                          value={newLinkTitulo}
+                          onChange={(e) => setNewLinkTitulo(e.target.value)}
+                          placeholder="Título (opcional)"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                        />
+                        <input
+                          type="url"
+                          value={newLinkUrl}
+                          onChange={(e) => setNewLinkUrl(e.target.value)}
+                          placeholder="https://www.youtube.com/watch?v=..."
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={async () => {
+                              if (!newLinkUrl.trim()) {
+                                alert('Por favor, insira uma URL válida')
+                                return
+                              }
+                              try {
+                                const response = await fetch(`/api/musicas/${musica.id}/links-youtube`, {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    url: newLinkUrl.trim(),
+                                    titulo: newLinkTitulo.trim() || null,
+                                  }),
+                                })
+                                if (response.ok) {
+                                  setNewLinkUrl('')
+                                  setNewLinkTitulo('')
+                                  setShowAddLinkForm(false)
+                                  loadLinksYouTube()
+                                } else {
+                                  const error = await response.json()
+                                  alert(error.error || 'Erro ao adicionar link')
+                                }
+                              } catch (error) {
+                                console.error('Erro ao adicionar link:', error)
+                                alert('Erro ao adicionar link')
+                              }
+                            }}
+                            className="flex-1 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-light transition-colors text-sm font-semibold"
+                          >
+                            Salvar
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowAddLinkForm(false)
+                              setNewLinkUrl('')
+                              setNewLinkTitulo('')
+                            }}
+                            className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors text-sm"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             )}
@@ -389,6 +525,161 @@ export default function MusicaModal({ musica, isOpen, onClose }: MusicaModalProp
                     <p>Letra não encontrada.</p>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* YouTube */}
+            {viewType === 'youtube' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={handleBackToOptions}
+                    className="text-primary hover:underline text-sm flex items-center gap-2 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Voltar para opções
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {linksYouTube.length > 0 ? (
+                    <div className="space-y-2">
+                      {linksYouTube.map((link) => {
+                        const videoId = extractYouTubeId(link.url)
+                        if (!videoId) return null
+                        const isLegacy = link.id === 'legacy'
+                        return (
+                          <button
+                            key={link.id}
+                            onClick={() => {
+                              setVideo(videoId, link.titulo || musica.titulo)
+                            }}
+                            className="w-full bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg text-center font-semibold transition-all duration-200 transform hover:scale-105 hover:shadow-lg flex items-center justify-center gap-2"
+                          >
+                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                            </svg>
+                            <span>{link.titulo || 'Ouvir Música'}</span>
+                            {isAdmin && !isLegacy && (
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation()
+                                  if (confirm('Tem certeza que deseja remover este link?')) {
+                                    try {
+                                      const response = await fetch(`/api/musicas/${musica.id}/links-youtube/${link.id}`, {
+                                        method: 'DELETE',
+                                      })
+                                      if (response.ok) {
+                                        loadLinksYouTube()
+                                      }
+                                    } catch (error) {
+                                      console.error('Erro ao remover link:', error)
+                                    }
+                                  }
+                                }}
+                                className="ml-auto p-1 hover:bg-red-700 rounded transition-colors"
+                                title="Remover link"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            )}
+                            {isAdmin && isLegacy && (
+                              <span className="ml-auto text-xs bg-yellow-500 text-white px-2 py-1 rounded">
+                                Link antigo
+                              </span>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                      <p>Nenhum link do YouTube cadastrado ainda.</p>
+                    </div>
+                  )}
+
+                  {isAdmin && (
+                    <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
+                      {!showAddLinkForm ? (
+                        <button
+                          onClick={() => setShowAddLinkForm(true)}
+                          className="w-full bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg text-center font-semibold transition-all duration-200 flex items-center justify-center gap-2"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                          <span>Adicionar Link do YouTube</span>
+                        </button>
+                      ) : (
+                        <div className="space-y-2 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                          <input
+                            type="text"
+                            value={newLinkTitulo}
+                            onChange={(e) => setNewLinkTitulo(e.target.value)}
+                            placeholder="Título (opcional)"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                          />
+                          <input
+                            type="url"
+                            value={newLinkUrl}
+                            onChange={(e) => setNewLinkUrl(e.target.value)}
+                            placeholder="https://www.youtube.com/watch?v=..."
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={async () => {
+                                if (!newLinkUrl.trim()) {
+                                  alert('Por favor, insira uma URL válida')
+                                  return
+                                }
+                                try {
+                                  const response = await fetch(`/api/musicas/${musica.id}/links-youtube`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                      url: newLinkUrl.trim(),
+                                      titulo: newLinkTitulo.trim() || null,
+                                    }),
+                                  })
+                                  if (response.ok) {
+                                    setNewLinkUrl('')
+                                    setNewLinkTitulo('')
+                                    setShowAddLinkForm(false)
+                                    loadLinksYouTube()
+                                  } else {
+                                    const error = await response.json()
+                                    alert(error.error || 'Erro ao adicionar link')
+                                  }
+                                } catch (error) {
+                                  console.error('Erro ao adicionar link:', error)
+                                  alert('Erro ao adicionar link')
+                                }
+                              }}
+                              className="flex-1 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-light transition-colors text-sm font-semibold"
+                            >
+                              Salvar
+                            </button>
+                            <button
+                              onClick={() => {
+                                setShowAddLinkForm(false)
+                                setNewLinkUrl('')
+                                setNewLinkTitulo('')
+                              }}
+                              className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors text-sm"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -481,7 +772,7 @@ export default function MusicaModal({ musica, isOpen, onClose }: MusicaModalProp
             )}
 
             {/* Mensagem se não houver opções */}
-            {!viewType && !musica.temLetras && !musica.temCifras && !youtubeId && (
+            {!viewType && !musica.temLetras && !musica.temCifras && linksYouTube.length === 0 && (
               <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 <p>Nenhuma opção disponível para esta música.</p>
               </div>
@@ -649,12 +940,11 @@ function LetraEditorModal({
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Texto da Letra:
               </label>
-              <textarea
+              <RichTextEditor
                 value={texto}
-                onChange={(e) => setTexto(e.target.value)}
+                onChange={setTexto}
                 rows={15}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                placeholder="Cole ou digite a letra aqui..."
+                placeholder="Cole ou digite a letra aqui. Use os botões acima para formatar o texto (negrito, itálico, cores, etc.)"
               />
             </div>
 
@@ -667,7 +957,9 @@ function LetraEditorModal({
               </button>
               <button
                 onClick={() => {
-                  if (texto.trim()) {
+                  // Remove tags HTML e verifica se há conteúdo
+                  const textContent = texto.replace(/<[^>]*>/g, '').trim()
+                  if (textContent) {
                     onSave(texto)
                   } else {
                     alert('Por favor, preencha o texto da letra')

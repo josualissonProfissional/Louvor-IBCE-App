@@ -6,6 +6,7 @@ import { MusicaCompleta } from '@/types'
 import { useYouTubePlayer } from './YouTubePlayer'
 import LetraViewer from './LetraViewer'
 import CifraViewerInline from './CifraViewerInline'
+import MusicaModal from './MusicaModal'
 
 interface MusicaListProps {
   musicas: MusicaCompleta[]
@@ -15,6 +16,13 @@ interface MusicaListProps {
 export default function MusicaList({ musicas, isAdmin }: MusicaListProps) {
   const [selectedMusica, setSelectedMusica] = useState<MusicaCompleta | null>(null)
   const [viewType, setViewType] = useState<'letra' | 'cifra' | null>(null)
+  const [musicaModal, setMusicaModal] = useState<{
+    id: string
+    titulo: string
+    link_youtube: string | null
+    temLetras: boolean
+    temCifras: boolean
+  } | null>(null)
   const { setVideo } = useYouTubePlayer()
   
   // Estados para busca e filtros
@@ -62,9 +70,19 @@ export default function MusicaList({ musicas, isAdmin }: MusicaListProps) {
   }
 
   const handleViewYouTube = (musica: MusicaCompleta) => {
-    const videoId = getYouTubeVideoId(musica.link_youtube || '')
-    if (videoId) {
-      setVideo(videoId, musica.titulo)
+    // Verifica se link_youtube é um array (JSONB) ou string
+    const temLinks = Array.isArray(musica.link_youtube) 
+      ? musica.link_youtube.length > 0
+      : musica.link_youtube && musica.link_youtube.trim() !== ''
+    
+    if (temLinks) {
+      setMusicaModal({
+        id: musica.id,
+        titulo: musica.titulo,
+        link_youtube: musica.link_youtube,
+        temLetras: musica.letras.length > 0,
+        temCifras: musica.cifras.length > 0,
+      })
       closeModal()
     }
   }
@@ -78,10 +96,14 @@ export default function MusicaList({ musicas, isAdmin }: MusicaListProps) {
     const matchesSearch = searchTerm === '' || titulo.includes(searchLower)
     
     // Filtro de tipo
+    const temYouTube = Array.isArray((musica as any).link_youtube) 
+      ? (musica as any).link_youtube.length > 0
+      : (musica as any).link_youtube && (musica as any).link_youtube.trim() !== ''
+    
     const matchesTipo = filterTipo === 'todos' ||
       (filterTipo === 'com_letras' && musica.letras.length > 0) ||
       (filterTipo === 'com_cifras' && musica.cifras.length > 0) ||
-      (filterTipo === 'com_youtube' && musica.link_youtube) ||
+      (filterTipo === 'com_youtube' && temYouTube) ||
       (filterTipo === 'sem_letras' && musica.letras.length === 0) ||
       (filterTipo === 'sem_cifras' && musica.cifras.length === 0)
     
@@ -257,7 +279,8 @@ export default function MusicaList({ musicas, isAdmin }: MusicaListProps) {
                   </span>
                 </button>
               )}
-              {selectedMusica.link_youtube && (
+              {((Array.isArray(selectedMusica.link_youtube) && selectedMusica.link_youtube.length > 0) || 
+                (typeof selectedMusica.link_youtube === 'string' && selectedMusica.link_youtube.trim() !== '')) && (
                 <button
                   onClick={() => handleViewYouTube(selectedMusica)}
                   className="w-full bg-red-500 hover:bg-red-600 text-white py-3 px-4 rounded-lg font-medium transition-all duration-200 transform hover:scale-[1.02] hover:shadow-lg flex items-center justify-center gap-2"
@@ -344,6 +367,15 @@ export default function MusicaList({ musicas, isAdmin }: MusicaListProps) {
         </div>
       )}
 
+      {/* Modal de Música (para YouTube) */}
+      {musicaModal && (
+        <MusicaModal
+          musica={musicaModal}
+          isOpen={!!musicaModal}
+          onClose={() => setMusicaModal(null)}
+          initialView="youtube"
+        />
+      )}
     </>
   )
 }

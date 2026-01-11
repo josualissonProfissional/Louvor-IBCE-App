@@ -18,6 +18,8 @@ export default function RichTextEditor({
 }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null)
   const [isFocused, setIsFocused] = useState(false)
+  const [showTextColorPicker, setShowTextColorPicker] = useState(false)
+  const [showBgColorPicker, setShowBgColorPicker] = useState(false)
 
   // Sincroniza o valor inicial
   useEffect(() => {
@@ -27,16 +29,30 @@ export default function RichTextEditor({
       const normalizedValue = value || ''
       const normalizedCurrent = currentContent || ''
       
-      // Converte quebras de linha simples para <br>
-      const formattedValue = normalizedValue
-        .replace(/\n/g, '<br>')
-        .replace(/<br><br>/g, '<br>')
-      
-      if (normalizedCurrent !== formattedValue && normalizedCurrent !== normalizedValue) {
-        editorRef.current.innerHTML = formattedValue
+      // Preserva o HTML original sem modificar quebras de linha ou espaços
+      if (normalizedCurrent !== normalizedValue && normalizedValue) {
+        editorRef.current.innerHTML = normalizedValue
       }
     }
   }, [value])
+
+  // Fecha os seletores de cor ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (!target.closest('.color-picker-container')) {
+        setShowTextColorPicker(false)
+        setShowBgColorPicker(false)
+      }
+    }
+
+    if (showTextColorPicker || showBgColorPicker) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [showTextColorPicker, showBgColorPicker])
 
   const handleInput = () => {
     if (editorRef.current) {
@@ -52,6 +68,12 @@ export default function RichTextEditor({
 
   const formatText = (command: string) => {
     execCommand(command)
+  }
+
+  const applyColor = (command: 'foreColor' | 'backColor', color: string) => {
+    execCommand(command, color)
+    setShowTextColorPicker(false)
+    setShowBgColorPicker(false)
   }
 
   const insertText = (text: string) => {
@@ -109,95 +131,104 @@ export default function RichTextEditor({
         </button>
         <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
         {/* Seletor de Cor do Texto */}
-        <div className="relative group">
+        <div className="relative color-picker-container">
           <button
             type="button"
-            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+            onClick={() => {
+              setShowTextColorPicker(prev => !prev)
+              setShowBgColorPicker(false)
+            }}
+            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors flex items-center gap-1"
             title="Cor do texto"
             onMouseDown={(e) => e.preventDefault()}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
             </svg>
+            <div className="w-3 h-3 rounded-full border border-gray-400" style={{ backgroundColor: 'currentColor' }}></div>
           </button>
-          <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-700 rounded-lg shadow-lg p-2 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-            <div className="grid grid-cols-8 gap-1">
-              {[
-                '#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF',
-                '#800000', '#008000', '#000080', '#808000', '#800080', '#008080', '#C0C0C0', '#808080',
-                '#FFA500', '#FFC0CB', '#A52A2A', '#FFD700', '#4B0082', '#9400D3', '#00008B', '#8B0000',
-                '#006400', '#2E8B57', '#4682B4', '#191970', '#8B4513', '#2F4F4F', '#DC143C', '#00CED1',
-              ].map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  onClick={() => {
-                    execCommand('foreColor', color)
-                  }}
-                  className="w-6 h-6 rounded border border-gray-300 dark:border-gray-600 hover:scale-125 transition-transform"
-                  style={{ backgroundColor: color }}
-                  title={color}
-                  onMouseDown={(e) => e.preventDefault()}
-                />
-              ))}
+          {showTextColorPicker && (
+            <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-700 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 p-2 z-[9999]">
+              <div className="flex gap-2">
+                {[
+                  { color: '#000000', name: 'Preto' },
+                  { color: '#FFFFFF', name: 'Branco' },
+                  { color: '#FFD700', name: 'Dourado' },
+                  { color: '#FF6B6B', name: 'Vermelho' },
+                  { color: '#4ECDC4', name: 'Azul' },
+                ].map(({ color, name }) => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => applyColor('foreColor', color)}
+                    className="rounded-lg border border-gray-200 dark:border-gray-500 hover:scale-110 transition-transform shadow-sm flex items-center justify-center"
+                    style={{ 
+                      backgroundColor: color, 
+                      width: '2.5rem', 
+                      height: '2.5rem',
+                      minWidth: '2.5rem', 
+                      minHeight: '2.5rem',
+                      flexShrink: 0
+                    }}
+                    title={name}
+                    onMouseDown={(e) => e.preventDefault()}
+                  >
+                    {color === '#FFFFFF' && (
+                      <div className="w-6 h-6 border-2 border-gray-400 rounded"></div>
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="mt-2 pt-2 border-t border-gray-300 dark:border-gray-600">
-              <input
-                type="color"
-                onChange={(e) => {
-                  execCommand('foreColor', e.target.value)
-                }}
-                className="w-full h-8 cursor-pointer"
-                title="Cor personalizada"
-              />
-            </div>
-          </div>
+          )}
         </div>
         {/* Seletor de Cor de Fundo */}
-        <div className="relative group">
+        <div className="relative color-picker-container">
           <button
             type="button"
-            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+            onClick={() => {
+              setShowBgColorPicker(prev => !prev)
+              setShowTextColorPicker(false)
+            }}
+            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors flex items-center gap-1"
             title="Cor de fundo do texto"
             onMouseDown={(e) => e.preventDefault()}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
             </svg>
-            <div className="absolute bottom-0 right-0 w-2 h-2 bg-gray-400 rounded-full border border-white dark:border-gray-800"></div>
+            <div className="w-3 h-3 rounded-sm border border-gray-400" style={{ backgroundColor: 'currentColor' }}></div>
           </button>
-          <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-700 rounded-lg shadow-lg p-2 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-            <div className="grid grid-cols-8 gap-1">
-              {[
-                '#FFFF00', '#FFC0CB', '#FFA500', '#90EE90', '#87CEEB', '#DDA0DD', '#F0E68C', '#FFB6C1',
-                '#E6E6FA', '#FFF8DC', '#F5DEB3', '#FFE4E1', '#E0FFFF', '#F0FFF0', '#FFF0F5', '#F5F5DC',
-                '#FFE4B5', '#DEB887', '#D2B48C', '#BC8F8F', '#A0A0A0', '#808080', '#696969', '#556B2F',
-                '#8B4513', '#A0522D', '#CD853F', '#D2691E', '#B8860B', '#DAA520', '#FFD700', '#FFA500',
-              ].map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  onClick={() => {
-                    execCommand('backColor', color)
-                  }}
-                  className="w-6 h-6 rounded border border-gray-300 dark:border-gray-600 hover:scale-125 transition-transform"
-                  style={{ backgroundColor: color }}
-                  title={color}
-                  onMouseDown={(e) => e.preventDefault()}
-                />
-              ))}
+          {showBgColorPicker && (
+            <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-700 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 p-2 z-[9999]">
+              <div className="flex gap-2">
+                {[
+                  { color: '#FFFF00', name: 'Amarelo' },
+                  { color: '#FFE4B5', name: 'Bege' },
+                  { color: '#E0FFFF', name: 'Azul Claro' },
+                  { color: '#F0E68C', name: 'Amarelo Claro' },
+                  { color: '#FFB6C1', name: 'Rosa' },
+                ].map(({ color, name }) => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => applyColor('backColor', color)}
+                    className="rounded-lg border border-gray-200 dark:border-gray-500 hover:scale-110 transition-transform shadow-sm"
+                    style={{ 
+                      backgroundColor: color, 
+                      width: '2.5rem', 
+                      height: '2.5rem',
+                      minWidth: '2.5rem', 
+                      minHeight: '2.5rem',
+                      flexShrink: 0
+                    }}
+                    title={name}
+                    onMouseDown={(e) => e.preventDefault()}
+                  />
+                ))}
+              </div>
             </div>
-            <div className="mt-2 pt-2 border-t border-gray-300 dark:border-gray-600">
-              <input
-                type="color"
-                onChange={(e) => {
-                  execCommand('backColor', e.target.value)
-                }}
-                className="w-full h-8 cursor-pointer"
-                title="Cor de fundo personalizada"
-              />
-            </div>
-          </div>
+          )}
         </div>
         <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
         <button
@@ -321,6 +352,7 @@ export default function RichTextEditor({
         }
         [contenteditable] {
           outline: none;
+          white-space: pre-wrap !important;
         }
         [contenteditable] strong {
           font-weight: bold;
@@ -335,6 +367,18 @@ export default function RichTextEditor({
           font-size: 1.5rem;
           font-weight: bold;
           margin: 0.5rem 0;
+        }
+        [contenteditable] br {
+          display: block;
+          content: "";
+          margin: 0;
+        }
+        [contenteditable] p {
+          margin: 0.5em 0;
+          white-space: pre-wrap;
+        }
+        [contenteditable] div {
+          white-space: pre-wrap;
         }
       `}</style>
     </div>
