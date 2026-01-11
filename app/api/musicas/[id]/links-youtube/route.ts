@@ -88,8 +88,8 @@ export async function POST(
     const linksAtualizados = [...linksExistentes, novoLink]
 
     // Atualiza o campo link_youtube na tabela musicas
-    const { data, error } = await supabase
-      .from('musicas')
+    const { data, error } = await (supabase
+      .from('musicas') as any)
       .update({ 
         link_youtube: linksAtualizados,
         updated_at: new Date().toISOString()

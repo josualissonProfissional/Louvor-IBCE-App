@@ -43,8 +43,8 @@ export async function PUT(
     })
 
     // Atualiza o campo link_youtube na tabela musicas
-    const { data, error } = await supabase
-      .from('musicas')
+    const { data, error } = await (supabase
+      .from('musicas') as any)
       .update({ 
         link_youtube: linksAtualizados,
         updated_at: new Date().toISOString()
@@ -98,8 +98,8 @@ export async function DELETE(
     )
 
     // Atualiza o campo link_youtube na tabela musicas
-    const { error } = await supabase
-      .from('musicas')
+    const { error } = await (supabase
+      .from('musicas') as any)
       .update({ 
         link_youtube: linksAtualizados,
         updated_at: new Date().toISOString()
