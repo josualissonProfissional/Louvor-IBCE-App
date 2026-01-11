@@ -20,7 +20,8 @@ export async function GET(
     if (musicaError) throw musicaError
 
     // link_youtube agora é um array JSONB
-    const links = musicaData?.link_youtube || []
+    const musicaDataTyped = musicaData as { link_youtube: any } | null
+    const links = musicaDataTyped?.link_youtube || []
     
     // Converte para o formato esperado pelo frontend
     const linksFormatted = Array.isArray(links) ? links.map((link: any, index: number) => ({
@@ -70,8 +71,9 @@ export async function POST(
     if (musicaError) throw musicaError
 
     // Pega os links existentes (ou array vazio)
-    const linksExistentes = Array.isArray(musicaData?.link_youtube) 
-      ? musicaData.link_youtube 
+    const musicaDataTyped = musicaData as { link_youtube: any } | null
+    const linksExistentes = Array.isArray(musicaDataTyped?.link_youtube) 
+      ? musicaDataTyped.link_youtube 
       : []
 
     // Adiciona o novo link

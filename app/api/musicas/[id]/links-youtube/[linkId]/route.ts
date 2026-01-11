@@ -24,8 +24,9 @@ export async function PUT(
     if (musicaError) throw musicaError
 
     // Pega os links existentes
-    const linksExistentes = Array.isArray(musicaData?.link_youtube) 
-      ? musicaData.link_youtube 
+    const musicaDataTyped = musicaData as { link_youtube: any } | null
+    const linksExistentes = Array.isArray(musicaDataTyped?.link_youtube) 
+      ? musicaDataTyped.link_youtube 
       : []
 
     // Encontra e atualiza o link específico
@@ -87,8 +88,9 @@ export async function DELETE(
     if (musicaError) throw musicaError
 
     // Pega os links existentes e remove o link especificado
-    const linksExistentes = Array.isArray(musicaData?.link_youtube) 
-      ? musicaData.link_youtube 
+    const musicaDataTyped = musicaData as { link_youtube: any } | null
+    const linksExistentes = Array.isArray(musicaDataTyped?.link_youtube) 
+      ? musicaDataTyped.link_youtube 
       : []
 
     const linksAtualizados = linksExistentes.filter((link: any) => 
