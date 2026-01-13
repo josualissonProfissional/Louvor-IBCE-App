@@ -43,11 +43,24 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const { data: escalas, error } = await query.order('data', { ascending: true })
+    const { data: escalas, error } = await query.order('data', { ascending: true }).order('ordem', { ascending: true, nullsFirst: false })
 
     if (error) throw error
 
-    return NextResponse.json(escalas || [])
+    // Ordena manualmente para garantir que escalas com ordem null fiquem por último
+    const escalasOrdenadas = (escalas || []).sort((a, b) => {
+      // Primeiro ordena por data
+      if (a.data !== b.data) {
+        return a.data.localeCompare(b.data)
+      }
+      // Depois ordena por ordem (nulls por último)
+      if (a.ordem === null && b.ordem === null) return 0
+      if (a.ordem === null) return 1
+      if (b.ordem === null) return -1
+      return a.ordem - b.ordem
+    })
+
+    return NextResponse.json(escalasOrdenadas)
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || 'Erro ao buscar escalas' },
