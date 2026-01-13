@@ -55,6 +55,46 @@ export default function DashboardClient({
     temCifras: boolean
   } | null>(null)
   const [showShareModal, setShowShareModal] = useState(false)
+  const [diasAtuacaoCompletos, setDiasAtuacaoCompletos] = useState<DiaAtuacao[]>(diasAtuacao)
+
+  // Carrega dias de atuação quando o mês do calendário muda
+  useEffect(() => {
+    async function loadDiasAtuacao() {
+      const monthStart = startOfMonth(currentDate)
+      const monthEnd = endOfMonth(currentDate)
+      
+      try {
+        const response = await fetch(
+          `/api/dias-atuacao?data_inicio=${format(monthStart, 'yyyy-MM-dd')}&data_fim=${format(monthEnd, 'yyyy-MM-dd')}`
+        )
+        if (response.ok) {
+          const novosDias = await response.json()
+          // Verifica se a resposta é um array válido
+          if (Array.isArray(novosDias)) {
+            // Combina com os dias já existentes, evitando duplicatas por ID
+            setDiasAtuacaoCompletos((prev) => {
+              const diasMap = new Map<string, DiaAtuacao>()
+              // Adiciona dias anteriores
+              prev.forEach((dia) => {
+                diasMap.set(dia.id, dia)
+              })
+              // Adiciona novos dias (sobrescreve se já existir)
+              novosDias.forEach((novoDia: DiaAtuacao) => {
+                if (novoDia && novoDia.id) {
+                  diasMap.set(novoDia.id, novoDia)
+                }
+              })
+              return Array.from(diasMap.values())
+            })
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dias de atuação:', error)
+      }
+    }
+
+    loadDiasAtuacao()
+  }, [currentDate])
 
   // Encontra a próxima data de atuação que ainda não passou
   const encontrarProximaDataAtuacao = () => {
@@ -62,7 +102,7 @@ export default function DashboardClient({
     today.setHours(0, 0, 0, 0)
 
     // Ordena as datas de atuação e encontra a primeira que seja >= hoje
-    const proximaData = diasAtuacao
+    const proximaData = diasAtuacaoCompletos
       .map((dia) => {
         const [year, month, day] = dia.data.split('-').map(Number)
         return new Date(year, month - 1, day, 12, 0, 0)
@@ -85,7 +125,7 @@ export default function DashboardClient({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [diasAtuacao])
+  }, [diasAtuacaoCompletos])
 
   // Busca escalas quando uma data é selecionada
   useEffect(() => {
@@ -167,7 +207,7 @@ export default function DashboardClient({
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd })
 
   const isDiaAtuacao = (date: Date) => {
-    return diasAtuacao.some((dia) => {
+    return diasAtuacaoCompletos.some((dia) => {
       const [year, month, day] = dia.data.split('-').map(Number)
       const diaDate = new Date(year, month - 1, day, 12, 0, 0)
       return isSameDay(diaDate, date)

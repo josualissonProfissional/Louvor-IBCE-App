@@ -21,13 +21,80 @@ export default function DisponibilidadeCalendar({
   const [currentDate, setCurrentDate] = useState(new Date())
   const [disponibilidade, setDisponibilidade] = useState(initialDisponibilidade)
   const [loading, setLoading] = useState(false)
+  const [diasAtuacaoCompletos, setDiasAtuacaoCompletos] = useState<DiaAtuacao[]>(diasAtuacao)
 
   const monthStart = startOfMonth(currentDate)
   const monthEnd = endOfMonth(currentDate)
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd })
 
+  // Carrega dias de atuação quando o mês do calendário muda
+  useEffect(() => {
+    async function loadDiasAtuacao() {
+      const monthStart = startOfMonth(currentDate)
+      const monthEnd = endOfMonth(currentDate)
+      
+      try {
+        const response = await fetch(
+          `/api/dias-atuacao?data_inicio=${format(monthStart, 'yyyy-MM-dd')}&data_fim=${format(monthEnd, 'yyyy-MM-dd')}`
+        )
+        if (response.ok) {
+          const novosDias = await response.json()
+          // Verifica se a resposta é um array válido
+          if (Array.isArray(novosDias)) {
+            // Combina com os dias já existentes, evitando duplicatas por ID
+            setDiasAtuacaoCompletos((prev) => {
+              const diasMap = new Map<string, DiaAtuacao>()
+              // Adiciona dias anteriores
+              prev.forEach((dia) => {
+                diasMap.set(dia.id, dia)
+              })
+              // Adiciona novos dias (sobrescreve se já existir)
+              novosDias.forEach((novoDia: DiaAtuacao) => {
+                if (novoDia && novoDia.id) {
+                  diasMap.set(novoDia.id, novoDia)
+                }
+              })
+              return Array.from(diasMap.values())
+            })
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dias de atuação:', error)
+      }
+    }
+
+    loadDiasAtuacao()
+  }, [currentDate])
+
+  // Carrega disponibilidade quando o mês do calendário muda
+  useEffect(() => {
+    async function loadDisponibilidade() {
+      const monthStart = startOfMonth(currentDate)
+      const monthEnd = endOfMonth(currentDate)
+      
+      try {
+        const supabase = createClient()
+        const { data: novaDisponibilidade, error } = await supabase
+          .from('disponibilidade')
+          .select('*')
+          .eq('usuario_id', userId)
+          .gte('data', format(monthStart, 'yyyy-MM-dd'))
+          .lte('data', format(monthEnd, 'yyyy-MM-dd'))
+          .order('data', { ascending: true })
+
+        if (!error && novaDisponibilidade && Array.isArray(novaDisponibilidade)) {
+          setDisponibilidade(novaDisponibilidade)
+        }
+      } catch (error) {
+        console.error('Erro ao carregar disponibilidade:', error)
+      }
+    }
+
+    loadDisponibilidade()
+  }, [currentDate, userId])
+
   const isDiaAtuacao = (date: Date) => {
-    return diasAtuacao.some((dia) => {
+    return diasAtuacaoCompletos.some((dia) => {
       // Parse seguro da data para evitar problemas de timezone
       const [year, month, day] = dia.data.split('-').map(Number)
       const diaDate = new Date(year, month - 1, day, 12, 0, 0)
