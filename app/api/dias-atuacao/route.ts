@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error
 
-    return NextResponse.json(data)
+    return NextResponse.json(data || [])
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || 'Erro ao buscar dias de atuação' },

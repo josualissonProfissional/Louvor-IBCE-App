@@ -1,7 +1,7 @@
 'use client'
 
 // Calendário de escalas com edição e remoção
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns'
 import ptBR from 'date-fns/locale/pt-BR'
 import { DiaAtuacao } from '@/types'
@@ -22,16 +22,82 @@ interface EscalaCalendarProps {
   isAdmin: boolean
 }
 
-export default function EscalaCalendar({ diasAtuacao, escalas, isAdmin }: EscalaCalendarProps) {
+export default function EscalaCalendar({ diasAtuacao, escalas: initialEscalas, isAdmin }: EscalaCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const [diasAtuacaoCompletos, setDiasAtuacaoCompletos] = useState<DiaAtuacao[]>(diasAtuacao)
+  const [escalas, setEscalas] = useState<Escala[]>(initialEscalas)
 
   const monthStart = startOfMonth(currentDate)
   const monthEnd = endOfMonth(currentDate)
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd })
 
+  // Carrega dias de atuação quando o mês do calendário muda
+  useEffect(() => {
+    async function loadDiasAtuacao() {
+      const monthStart = startOfMonth(currentDate)
+      const monthEnd = endOfMonth(currentDate)
+      
+      try {
+        const response = await fetch(
+          `/api/dias-atuacao?data_inicio=${format(monthStart, 'yyyy-MM-dd')}&data_fim=${format(monthEnd, 'yyyy-MM-dd')}`
+        )
+        if (response.ok) {
+          const novosDias = await response.json()
+          // Verifica se a resposta é um array válido
+          if (Array.isArray(novosDias)) {
+            // Combina com os dias já existentes, evitando duplicatas por ID
+            setDiasAtuacaoCompletos((prev) => {
+              const diasMap = new Map<string, DiaAtuacao>()
+              // Adiciona dias anteriores
+              prev.forEach((dia) => {
+                diasMap.set(dia.id, dia)
+              })
+              // Adiciona novos dias (sobrescreve se já existir)
+              novosDias.forEach((novoDia: DiaAtuacao) => {
+                if (novoDia && novoDia.id) {
+                  diasMap.set(novoDia.id, novoDia)
+                }
+              })
+              return Array.from(diasMap.values())
+            })
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dias de atuação:', error)
+      }
+    }
+
+    loadDiasAtuacao()
+  }, [currentDate])
+
+  // Carrega escalas quando o mês do calendário muda
+  useEffect(() => {
+    async function loadEscalas() {
+      const monthStart = startOfMonth(currentDate)
+      const monthEnd = endOfMonth(currentDate)
+      
+      try {
+        const response = await fetch(
+          `/api/escalas/public?data_inicio=${format(monthStart, 'yyyy-MM-dd')}&data_fim=${format(monthEnd, 'yyyy-MM-dd')}`
+        )
+        if (response.ok) {
+          const novasEscalas = await response.json()
+          // Verifica se a resposta é um array válido
+          if (Array.isArray(novasEscalas)) {
+            setEscalas(novasEscalas)
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao carregar escalas:', error)
+      }
+    }
+
+    loadEscalas()
+  }, [currentDate])
+
   const isDiaAtuacao = (date: Date) => {
-    return diasAtuacao.some((dia) => {
+    return diasAtuacaoCompletos.some((dia) => {
       // Parse seguro da data para evitar problemas de timezone
       const [year, month, day] = dia.data.split('-').map(Number)
       const diaDate = new Date(year, month - 1, day, 12, 0, 0)
