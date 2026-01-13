@@ -58,11 +58,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Se tem música, calcula a ordem (última posição + 1)
+    let ordem: number | null = null
+    if (musica_id) {
+      const { data: escalasExistentes } = await supabase
+        .from('escalas')
+        .select('ordem')
+        .eq('data', dataEscala)
+        .not('ordem', 'is', null)
+        .order('ordem', { ascending: false })
+        .limit(1)
+      
+      ordem = escalasExistentes && escalasExistentes.length > 0 
+        ? ((escalasExistentes[0] as any)?.ordem || 0) + 1 
+        : 1
+    }
+
     const escalaData: NovaEscala = {
       data: dataEscala,
       musica_id: musica_id || null, // Permite null para escalas gerais
       usuario_id,
       funcao,
+      ordem: ordem,
     }
 
     const { data, error } = await supabase

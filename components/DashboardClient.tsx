@@ -5,12 +5,14 @@ import { useState, useEffect } from 'react'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns'
 import ptBR from 'date-fns/locale/pt-BR'
 import { formatDate, getDayName } from '@/lib/utils'
-import { DiaAtuacao } from '@/types'
+import { DiaAtuacao, Usuario } from '@/types'
 import MusicaModal from '@/components/MusicaModal'
+import { createClient } from '@/lib/supabase/client'
 
 interface Escala {
   id: string
   data: string
+  ordem?: number | null
   musica: {
     id: string
     titulo: string
@@ -56,6 +58,34 @@ export default function DashboardClient({
   } | null>(null)
   const [showShareModal, setShowShareModal] = useState(false)
   const [diasAtuacaoCompletos, setDiasAtuacaoCompletos] = useState<DiaAtuacao[]>(diasAtuacao)
+  const [user, setUser] = useState<Usuario | null>(null)
+  const [reordenando, setReordenando] = useState(false)
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+  const [draggedData, setDraggedData] = useState<{ data: string; musicaId: string } | null>(null)
+  const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null)
+
+  // Carrega dados do usuário para verificar se é admin
+  useEffect(() => {
+    async function loadUser() {
+      const supabase = createClient()
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser()
+
+      if (authUser) {
+        const { data } = await supabase
+          .from('usuarios')
+          .select('*')
+          .eq('id', authUser.id)
+          .single()
+        setUser(data)
+      }
+    }
+    loadUser()
+  }, [])
+
+  const isAdmin = user?.lider === true
 
   // Carrega dias de atuação quando o mês do calendário muda
   useEffect(() => {
@@ -191,15 +221,144 @@ export default function DashboardClient({
           }
         })
 
+        // Ordena as músicas por ordem (se existir), caso contrário mantém ordem original
+        const musicasOrdenadas = Object.entries(escalasComMusica).sort(([a, escalasA], [b, escalasB]) => {
+          const ordemA = escalasA[0]?.ordem ?? 999
+          const ordemB = escalasB[0]?.ordem ?? 999
+          if (ordemA !== ordemB) {
+            return ordemA - ordemB
+          }
+          // Se a ordem for igual, ordena alfabeticamente
+          return a.localeCompare(b)
+        })
+
         return {
           data,
-          escalasComMusica,
+          escalasComMusica: Object.fromEntries(musicasOrdenadas),
           escalasGerais,
         }
       })
   }
 
   const escalasAgrupadas = agruparEscalasPorData(escalas)
+
+  // Função para reordenar músicas usando drag and drop
+  const handleReordenarMusicas = async (dataEscala: string, musicaIdOrigem: string, novoIndex: number) => {
+    if (!isAdmin || reordenando) return
+
+    try {
+      setReordenando(true)
+      
+      // Busca todas as escalas da data
+      const escalasDia = escalas.filter(e => e.data === dataEscala && e.musica)
+      
+      // Agrupa por música e pega a primeira escala de cada música
+      const musicasUnicas = new Map<string, Escala>()
+      escalasDia.forEach(escala => {
+        if (escala.musica && !musicasUnicas.has(escala.musica.id)) {
+          musicasUnicas.set(escala.musica.id, escala)
+        }
+      })
+      
+      // Converte para array e ordena por ordem
+      const musicasArray = Array.from(musicasUnicas.values()).sort((a, b) => {
+        const ordemA = a.ordem ?? 999
+        const ordemB = b.ordem ?? 999
+        return ordemA - ordemB
+      })
+      
+      // Encontra o índice da música atual
+      const indexAtual = musicasArray.findIndex(m => m.musica?.id === musicaIdOrigem)
+      if (indexAtual === -1) return
+      
+      // Remove a música da posição atual e insere na nova posição
+      const [musicaMovida] = musicasArray.splice(indexAtual, 1)
+      musicasArray.splice(novoIndex, 0, musicaMovida)
+      
+      // Prepara dados para API
+      const musicasParaAtualizar = musicasArray.map((escala, index) => ({
+        musica_id: escala.musica!.id,
+        ordem: index + 1
+      }))
+      
+      // Chama API para atualizar
+      const response = await fetch('/api/escalas/reordenar', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: dataEscala,
+          musicas: musicasParaAtualizar
+        })
+      })
+      
+      if (response.ok) {
+        // Recarrega as escalas
+        const dataStr = format(selectedDate || new Date(), 'yyyy-MM-dd')
+        const reloadResponse = await fetch(`/api/escalas/public?data=${dataStr}`)
+        if (reloadResponse.ok) {
+          const novasEscalas = await reloadResponse.json()
+          setEscalas(novasEscalas)
+        }
+      } else {
+        alert('Erro ao reordenar músicas')
+      }
+    } catch (error) {
+      console.error('Erro ao reordenar:', error)
+      alert('Erro ao reordenar músicas')
+    } finally {
+      setReordenando(false)
+    }
+  }
+
+  // Handlers para drag and drop
+  const handleDragStart = (e: React.DragEvent, index: number, dataEscala: string, musicaId: string) => {
+    if (!isAdmin) {
+      e.preventDefault()
+      return
+    }
+    // Verifica se o clique foi no botão (target é o botão ou filho do botão)
+    const target = e.target as HTMLElement
+    if (target.closest('button')) {
+      e.preventDefault()
+      return
+    }
+    setDraggedIndex(index)
+    setDraggedData({ data: dataEscala, musicaId })
+    setDragStartPos({ x: e.clientX, y: e.clientY })
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/html', '')
+  }
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    if (!isAdmin || draggedIndex === null) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverIndex(index)
+  }
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null)
+  }
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number, dataEscala: string) => {
+    e.preventDefault()
+    if (!isAdmin || draggedIndex === null || draggedData === null) return
+    
+    if (draggedIndex !== dropIndex && draggedData.data === dataEscala) {
+      handleReordenarMusicas(dataEscala, draggedData.musicaId, dropIndex)
+    }
+    
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+    setDraggedData(null)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+    setDraggedData(null)
+    setDragStartPos(null)
+  }
 
   // Funções do calendário
   const monthStart = startOfMonth(currentDate)
@@ -493,7 +652,7 @@ export default function DashboardClient({
                         Músicas
                       </h3>
                       <div className="space-y-2">
-                        {Object.entries(escalasComMusica).map(([musicaTitulo, escalasMusica]) => {
+                        {Object.entries(escalasComMusica).map(([musicaTitulo, escalasMusica], index, array) => {
                           // Pega a primeira escala para obter os dados da música
                           const primeiraEscala = escalasMusica[0]
                           const musica = primeiraEscala.musica
@@ -502,32 +661,62 @@ export default function DashboardClient({
 
                           const temLetras = musica.letras && musica.letras.length > 0
                           const temCifras = musica.cifras && musica.cifras.length > 0
+                          const isDragging = draggedIndex === index
+                          const isDragOver = dragOverIndex === index
 
                           return (
-                            <button
+                            <div
                               key={musicaTitulo}
-                              onClick={() => setMusicaModal({
-                                id: musica.id,
-                                titulo: musica.titulo,
-                                link_youtube: musica.link_youtube,
-                                temLetras: temLetras || false,
-                                temCifras: temCifras || false,
-                              })}
-                              className="bg-gray-50 dark:bg-gray-700 rounded p-3 w-full text-left hover:bg-gray-100 dark:hover:bg-gray-600 hover:shadow-md hover:scale-[1.02] transition-all duration-200 cursor-pointer border border-transparent hover:border-primary/30"
+                              onDragOver={(e) => handleDragOver(e, index)}
+                              onDragLeave={handleDragLeave}
+                              onDrop={(e) => handleDrop(e, index, data)}
+                              className={`
+                                bg-gray-50 dark:bg-gray-700 rounded p-3 border transition-all duration-200 flex items-start gap-2
+                                border-transparent hover:border-primary/30
+                                ${isDragOver ? 'border-primary border-2 scale-105 bg-primary/10 dark:bg-primary/20' : ''}
+                              `}
                             >
-                              <div className="font-medium text-sm sm:text-base text-gray-900 dark:text-white mb-2">
-                                {musicaTitulo}
-                              </div>
-                              {escalasMusica.map((escala) => (
-                                <div
-                                  key={escala.id}
-                                  className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 ml-2"
+                              {isAdmin && (
+                                <div 
+                                  className="mt-1 text-gray-400 dark:text-gray-500 flex-shrink-0 cursor-grab active:cursor-grabbing"
+                                  draggable={isAdmin && !reordenando}
+                                  onDragStart={(e) => handleDragStart(e, index, data, musica.id)}
+                                  onDragEnd={handleDragEnd}
                                 >
-                                  <span className="font-medium">Solo:</span>{' '}
-                                  {escala.usuario?.nome || escala.usuario?.email}
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                                  </svg>
                                 </div>
-                              ))}
-                            </button>
+                              )}
+                              <button
+                                onClick={() => {
+                                  // Só abre o modal se não estiver arrastando
+                                  if (draggedIndex === null) {
+                                    setMusicaModal({
+                                      id: musica.id,
+                                      titulo: musica.titulo,
+                                      link_youtube: musica.link_youtube,
+                                      temLetras: temLetras || false,
+                                      temCifras: temCifras || false,
+                                    })
+                                  }
+                                }}
+                                className="flex-1 text-left hover:opacity-80 transition-opacity cursor-pointer"
+                              >
+                                <div className="font-medium text-sm sm:text-base text-gray-900 dark:text-white mb-2">
+                                  {musicaTitulo}
+                                </div>
+                                {escalasMusica.map((escala) => (
+                                  <div
+                                    key={escala.id}
+                                    className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 ml-2"
+                                  >
+                                    <span className="font-medium">Solo:</span>{' '}
+                                    {escala.usuario?.nome || escala.usuario?.email}
+                                  </div>
+                                ))}
+                              </button>
+                            </div>
                           )
                         })}
                       </div>
