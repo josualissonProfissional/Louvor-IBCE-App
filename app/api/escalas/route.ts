@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
         .limit(1)
       
       ordem = escalasExistentes && escalasExistentes.length > 0 
-        ? (escalasExistentes[0].ordem || 0) + 1 
+        ? ((escalasExistentes[0] as any)?.ordem || 0) + 1 
         : 1
     }
 
