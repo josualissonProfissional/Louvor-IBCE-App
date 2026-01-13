@@ -13,7 +13,7 @@ interface MusicaModalProps {
   musica: {
     id: string
     titulo: string
-    link_youtube: string | null
+    link_youtube: string | Array<{ url: string; titulo: string | null; id: string }> | null
     temLetras?: boolean
     temCifras?: boolean
   }
@@ -34,10 +34,10 @@ interface LinkYouTube {
 interface MusicaCompleta {
   id: string
   titulo: string
-  link_youtube: string | null
+  link_youtube: string | Array<{ url: string; titulo: string | null; id: string; created_at?: string; updated_at?: string }> | null
   letras: Array<{ id: string; texto: string }>
   cifras: Array<{ id: string; texto: string; titulo?: string | null }>
-  links_youtube?: LinkYouTube[]
+  links_youtube?: LinkYouTube[] // Mantido para compatibilidade, mas não é mais usado
 }
 
 export default function MusicaModal({ musica, isOpen, onClose, initialView = null }: MusicaModalProps) {
