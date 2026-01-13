@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     if (error) throw error
 
     // Ordena manualmente para garantir que escalas com ordem null fiquem por último
-    const escalasOrdenadas = (escalas || []).sort((a, b) => {
+    const escalasOrdenadas = ((escalas || []) as any[]).sort((a: any, b: any) => {
       // Primeiro ordena por data
       if (a.data !== b.data) {
         return a.data.localeCompare(b.data)
