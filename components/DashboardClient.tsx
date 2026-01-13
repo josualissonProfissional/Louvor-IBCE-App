@@ -14,7 +14,7 @@ interface Escala {
   musica: {
     id: string
     titulo: string
-    link_youtube: string | null
+    link_youtube: string | Array<{ url: string; titulo: string | null; id: string }> | null
     letras?: { id: string }[]
     cifras?: { id: string }[]
   } | null
@@ -50,7 +50,7 @@ export default function DashboardClient({
   const [musicaModal, setMusicaModal] = useState<{
     id: string
     titulo: string
-    link_youtube: string | null
+    link_youtube: string | Array<{ url: string; titulo: string | null; id: string }> | null
     temLetras: boolean
     temCifras: boolean
   } | null>(null)
@@ -246,7 +246,17 @@ export default function DashboardClient({
           
           // Links do YouTube
           if (musica?.link_youtube) {
-            texto += `\n  🔗 ${musica.link_youtube}`
+            // Verifica se é um array (JSONB) ou string (legacy)
+            if (Array.isArray(musica.link_youtube)) {
+              // Array de links
+              musica.link_youtube.forEach((link, index) => {
+                const tituloLink = link.titulo || `Link ${index + 1}`
+                texto += `\n  🔗 ${tituloLink}: ${link.url}`
+              })
+            } else if (typeof musica.link_youtube === 'string') {
+              // String legacy (compatibilidade com dados antigos)
+              texto += `\n  🔗 ${musica.link_youtube}`
+            }
           }
           
           // Solos

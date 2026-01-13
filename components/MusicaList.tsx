@@ -19,7 +19,7 @@ export default function MusicaList({ musicas, isAdmin }: MusicaListProps) {
   const [musicaModal, setMusicaModal] = useState<{
     id: string
     titulo: string
-    link_youtube: string | null
+    link_youtube: string | Array<{ url: string; titulo: string | null; id: string }> | null
     temLetras: boolean
     temCifras: boolean
   } | null>(null)
