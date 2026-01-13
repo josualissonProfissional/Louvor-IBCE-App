@@ -158,27 +158,30 @@ export interface Database {
         Row: {
           id: string
           data: string
-          musica_id: string
+          musica_id: string | null
           usuario_id: string
           funcao: 'cantor' | 'musico' | 'solo'
+          ordem: number | null
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
           data: string
-          musica_id: string
+          musica_id?: string | null
           usuario_id: string
           funcao: 'cantor' | 'musico' | 'solo'
+          ordem?: number | null
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
           data?: string
-          musica_id?: string
+          musica_id?: string | null
           usuario_id?: string
           funcao?: 'cantor' | 'musico' | 'solo'
+          ordem?: number | null
           created_at?: string
           updated_at?: string
         }

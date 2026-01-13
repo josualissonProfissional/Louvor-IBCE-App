@@ -22,9 +22,9 @@ export async function PUT(request: NextRequest) {
 
     // Atualiza a ordem de cada música (todas as escalas da mesma música recebem a mesma ordem)
     const updates = musicas.map((musica: { musica_id: string; ordem: number }) => {
-      return supabase
-        .from('escalas')
-        .update({ ordem: musica.ordem, updated_at: new Date().toISOString() } as any)
+      const query = supabase.from('escalas') as any
+      return query
+        .update({ ordem: musica.ordem, updated_at: new Date().toISOString() })
         .eq('data', dataEscala)
         .eq('musica_id', musica.musica_id)
     })
