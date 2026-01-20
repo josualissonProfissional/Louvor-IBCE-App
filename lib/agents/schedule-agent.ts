@@ -220,7 +220,7 @@ export class ScheduleAgent {
         'quarta': 3, 'quinta': 4, 'sexta': 5, 'sábado': 6, 'sabado': 6
       }
       
-      const dayName = Object.keys(dayNames).find(name => query.includes(name))
+      const dayName = Object.keys(dayNames).find((name: string) => query.includes(name))
       if (dayName) {
         const targetDay = dayNames[dayName]
         const today = new Date()
@@ -376,7 +376,7 @@ export class ScheduleAgent {
    */
   private groupByDate(escalas: any[]): Record<string, any[]> {
     const grouped: Record<string, any[]> = {}
-    escalas.forEach(escala => {
+    escalas.forEach((escala: any) => {
       if (!grouped[escala.data]) {
         grouped[escala.data] = []
       }
@@ -477,7 +477,7 @@ export class ScheduleAgent {
       
       const pessoas = [...new Set(escalas.map((e: any) => e.usuario.nome || e.usuario.email))]
       response += `**${pessoas.length} pessoa${pessoas.length !== 1 ? 's' : ''} escalada${pessoas.length !== 1 ? 's' : ''}:**\n`
-      pessoas.forEach(nome => {
+      pessoas.forEach((nome: string) => {
         response += `- ${nome}\n`
       })
       response += `\n`

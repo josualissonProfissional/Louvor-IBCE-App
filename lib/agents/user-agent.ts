@@ -104,7 +104,7 @@ export class UserAgent {
       'violino', 'saxofone', 'flauta', 'trompete', 'contrabaixo', 'pandeiro'
     ]
     
-    const instrumento = instrumentos.find(inst => query.includes(inst))
+    const instrumento = instrumentos.find((inst: string) => query.includes(inst))
 
     let usuariosQuery = supabase
       .from('usuarios')

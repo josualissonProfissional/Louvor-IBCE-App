@@ -96,7 +96,7 @@ export class MusicAgent {
     }
 
     // Tenta encontrar match exato
-    const exactMatch = musicas.find(m => 
+    const exactMatch = musicas.find((m: any) => 
       normalizeForSearch(m.titulo) === normalizedName
     )
 
@@ -295,7 +295,7 @@ export class MusicAgent {
     return {
       success: true,
       response,
-      musicas: musicas.map(m => ({
+      musicas: musicas.map((m: any) => ({
         ...m,
         temLetras: false, // Será preenchido depois se necessário
         temCifras: false
@@ -342,7 +342,7 @@ export class MusicAgent {
     return {
       success: true,
       response,
-      musicas: musicas.map(m => ({
+      musicas: musicas.map((m: any) => ({
         id: m.id,
         titulo: m.titulo,
         link_youtube: m.link_youtube,
@@ -363,8 +363,8 @@ export class MusicAgent {
     if (error) throw error
 
     const total = musicas?.length || 0
-    const comLetras = musicas?.filter(m => m.letras && m.letras.length > 0).length || 0
-    const comCifras = musicas?.filter(m => m.cifras && m.cifras.length > 0).length || 0
+    const comLetras = musicas?.filter((m: any) => m.letras && m.letras.length > 0).length || 0
+    const comCifras = musicas?.filter((m: any) => m.cifras && m.cifras.length > 0).length || 0
 
     let response = `## 📊 Estatísticas de Músicas\n\n`
     response += `**Total de Músicas:** ${total}\n\n`
@@ -430,13 +430,13 @@ export class MusicAgent {
     if (error) throw error
 
     // Busca por palavras-chave no título OU na letra
-    const filtered = musicas?.filter(m => {
-      const tituloMatch = words.some(word => 
+    const filtered = musicas?.filter((m: any) => {
+      const tituloMatch = words.some((word: string) => 
         m.titulo.toLowerCase().includes(word)
       )
       
       const letraMatch = m.letras?.some((l: any) => 
-        words.some(word => l.texto.toLowerCase().includes(word))
+        words.some((word: string) => l.texto.toLowerCase().includes(word))
       ) || false
       
       return tituloMatch || letraMatch
@@ -490,7 +490,7 @@ export class MusicAgent {
     return {
       success: true,
       response,
-      musicas: musicas.map(m => ({
+      musicas: musicas.map((m: any) => ({
         id: m.id,
         titulo: m.titulo,
         link_youtube: m.link_youtube,

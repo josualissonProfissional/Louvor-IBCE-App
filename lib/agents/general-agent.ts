@@ -31,7 +31,7 @@ export class GeneralAgent {
    */
   private isGreeting(query: string): boolean {
     const greetings = ['oi', 'olá', 'ola', 'bom dia', 'boa tarde', 'boa noite', 'hey', 'ola', 'e aí', 'e ai']
-    return greetings.some(g => query === g || query.startsWith(g + ' ') || query.startsWith(g + ','))
+    return greetings.some((g: string) => query === g || query.startsWith(g + ' ') || query.startsWith(g + ','))
   }
 
   /**

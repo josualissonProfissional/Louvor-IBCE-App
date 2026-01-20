@@ -411,11 +411,11 @@ export function classifyQuery(query: string): ClassifiedQuery {
     { name: 'music', score: musicScore },
     { name: 'schedule', score: scheduleScore },
     { name: 'user', score: userScore }
-  ].filter(s => s.score >= 2)
+    ].filter((s: any) => s.score >= 2)
 
   if (strongScores.length >= 2) {
     type = 'hybrid'
-    intent = `Combina ${strongScores.map(s => s.name).join(' + ')}`
+    intent = `Combina ${strongScores.map((s: any) => s.name).join(' + ')}`
   } else {
     // Classifica pelo maior score
     const maxScore = Math.max(theologicalScore, musicScore, scheduleScore, userScore)
