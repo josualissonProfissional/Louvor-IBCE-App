@@ -9,30 +9,32 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@supabase/auth-helpers-nextjs": "^0.8.7",
+    "@supabase/supabase-js": "^2.38.5",
+    "@vercel/speed-insights": "^1.0.0",
+    "axios": "^1.13.2",
+    "clsx": "^2.0.0",
+    "date-fns": "^2.30.0",
+    "html2canvas": "^1.4.1",
     "next": "^14.0.4",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "@supabase/supabase-js": "^2.38.5",
-    "@supabase/auth-helpers-nextjs": "^0.8.7",
-    "date-fns": "^2.30.0",
     "react-calendar": "^4.7.0",
+    "react-dom": "^18.2.0",
+    "react-markdown": "^9.1.0",
     "react-modal": "^3.16.1",
-    "zod": "^3.22.4",
-    "clsx": "^2.0.0",
     "tailwind-merge": "^2.2.0",
-    "html2canvas": "^1.4.1"
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@types/node": "^20.10.6",
     "@types/react": "^18.2.46",
     "@types/react-dom": "^18.2.18",
     "@types/react-modal": "^3.16.3",
-    "typescript": "^5.3.3",
-    "tailwindcss": "^3.4.0",
-    "postcss": "^8.4.32",
     "autoprefixer": "^10.4.16",
     "eslint": "^8.56.0",
-    "eslint-config-next": "^14.0.4"
+    "eslint-config-next": "^14.0.4",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.3.3"
   }
 }
-

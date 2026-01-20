@@ -94,12 +94,21 @@ export function Header() {
               Escalas
             </Link>
             {user && (
-              <Link
-                href="/disponibilidade"
-                className={`hover:underline whitespace-nowrap ${pathname === '/disponibilidade' ? 'font-bold' : ''}`}
-              >
-                Disponibilidade
-              </Link>
+              <>
+                <Link
+                  href="/disponibilidade"
+                  className={`hover:underline whitespace-nowrap ${pathname === '/disponibilidade' ? 'font-bold' : ''}`}
+                >
+                  Disponibilidade
+                </Link>
+                <Link
+                  href="/ia"
+                  className={`hover:underline whitespace-nowrap flex items-center gap-1.5 ${pathname === '/ia' ? 'font-bold' : ''}`}
+                >
+                  <span>🤖</span>
+                  <span>IA Teológica</span>
+                </Link>
+              </>
             )}
 
             <button
@@ -244,19 +253,34 @@ export function Header() {
                   <span>Escalas</span>
                 </Link>
                 {user && (
-                  <Link
-                    href="/disponibilidade"
-                    onClick={handleLinkClick}
-                    className={`px-4 py-3 rounded-lg transition-all duration-200 hover:bg-primary-light hover:translate-x-2 flex items-center gap-2 ${
-                      pathname === '/disponibilidade' ? 'bg-primary-light/50 font-semibold border-l-4 border-white' : ''
-                    } ${mobileMenuOpen ? 'animate-slide-in-up' : ''}`}
-                    style={{ animationDelay: mobileMenuOpen ? '200ms' : '0ms' }}
-                  >
-                    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                    <span>Disponibilidade</span>
-                  </Link>
+                  <>
+                    <Link
+                      href="/disponibilidade"
+                      onClick={handleLinkClick}
+                      className={`px-4 py-3 rounded-lg transition-all duration-200 hover:bg-primary-light hover:translate-x-2 flex items-center gap-2 ${
+                        pathname === '/disponibilidade' ? 'bg-primary-light/50 font-semibold border-l-4 border-white' : ''
+                      } ${mobileMenuOpen ? 'animate-slide-in-up' : ''}`}
+                      style={{ animationDelay: mobileMenuOpen ? '200ms' : '0ms' }}
+                    >
+                      <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                      <span>Disponibilidade</span>
+                    </Link>
+                    <Link
+                      href="/ia"
+                      onClick={handleLinkClick}
+                      className={`px-4 py-3 rounded-lg transition-all duration-200 hover:bg-primary-light hover:translate-x-2 flex items-center gap-2 ${
+                        pathname === '/ia' ? 'bg-primary-light/50 font-semibold border-l-4 border-white' : ''
+                      } ${mobileMenuOpen ? 'animate-slide-in-up' : ''}`}
+                      style={{ animationDelay: mobileMenuOpen ? '250ms' : '0ms' }}
+                    >
+                      <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                      <span>🤖 IA Teológica</span>
+                    </Link>
+                  </>
                 )}
               </div>
 
