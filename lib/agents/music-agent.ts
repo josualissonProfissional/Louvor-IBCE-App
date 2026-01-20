@@ -254,7 +254,7 @@ export class MusicAgent {
     // Formata resposta
     let response = `## 🎵 ${musicas.length === 1 ? 'Música Encontrada' : `${musicas.length} Músicas Encontradas`}\n\n`
 
-    musicas.forEach((musica, index) => {
+    musicas.forEach((musica: any, index: number) => {
       response += `### ${index + 1}. **${musica.titulo}**\n\n`
       
       // Parse do link_youtube (pode ser string ou array JSON)
@@ -279,7 +279,7 @@ export class MusicAgent {
 
       if (links.length > 0) {
         response += `**🎬 Links do YouTube:**\n`
-        links.forEach((link, idx) => {
+        links.forEach((link: any, idx: number) => {
           response += `- ${link.titulo || `Link ${idx + 1}`}: \`${link.url}\`\n`
         })
       } else {
@@ -325,7 +325,7 @@ export class MusicAgent {
     response += `**Total:** ${musicas.length} música${musicas.length !== 1 ? 's' : ''}\n\n`
     response += `---\n\n`
 
-    musicas.forEach((musica, index) => {
+    musicas.forEach((musica: any, index: number) => {
       const temLetras = musica.letras && musica.letras.length > 0
       const temCifras = musica.cifras && musica.cifras.length > 0
       const temLink = !!musica.link_youtube
@@ -462,7 +462,7 @@ export class MusicAgent {
   private async formatDetailedMusicInfo(musicas: any[]): Promise<MusicSearchResult> {
     let response = `## 🎵 ${musicas.length === 1 ? 'Música Encontrada' : `${musicas.length} Músicas Encontradas`}\n\n`
 
-    musicas.forEach((musica, index) => {
+    musicas.forEach((musica: any, index: number) => {
       const temLetras = musica.letras && musica.letras.length > 0
       const temCifras = musica.cifras && musica.cifras.length > 0
 
