@@ -106,7 +106,8 @@ Posso ajudá-lo com:
         const data = await response.json()
         setApiStatus({
           isConfigured: data.isConfigured,
-          message: data.message
+          message: data.message,
+          agents: data.agents // agents vem do GET
         })
       } catch (error) {
         console.error('Erro ao verificar status da API:', error)
@@ -379,8 +380,8 @@ Posso ajudá-lo com:
       if (data.isConfigured !== undefined && apiStatus) {
         setApiStatus(prev => prev ? { 
           ...prev, 
-          isConfigured: data.isConfigured!, 
-          agents: data.agents 
+          isConfigured: data.isConfigured!
+          // agents só vem do GET, não do POST
         } : null)
       }
 
