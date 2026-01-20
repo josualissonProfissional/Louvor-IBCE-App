@@ -249,7 +249,8 @@ Posso ajudá-lo com:
             const data = await response.json()
             if (data.musicas && data.musicas.length > 0) {
               // Verifica se alguma música corresponde (match exato ou muito próximo)
-              const found = data.musicas.find((m: any) => {
+              const musicasList = data.musicas // Armazena em variável local para TypeScript
+              const found = musicasList.find((m: any) => {
                 const musicTitle = normalizeForSearch(m.titulo)
                 const searchTitle = normalizeForSearch(cleanMention)
                 return musicTitle === searchTitle || 
@@ -356,10 +357,11 @@ Posso ajudá-lo com:
       // Se a resposta contém músicas, marca como válidas
       if (data.musicas && data.musicas.length > 0) {
         const mentions = extractMentions(input)
+        const musicasList = data.musicas // Armazena em variável local para TypeScript
         mentions.forEach(mention => {
           const cleanMention = mention.text.replace(/^@/, '').replace(/[?!.,;:]+$/, '').trim()
           // Verifica se alguma música retornada corresponde à menção
-          const found = data.musicas.some((m: any) => {
+          const found = musicasList.some((m: any) => {
             const musicTitle = normalizeForSearch(m.titulo)
             const searchTitle = normalizeForSearch(cleanMention)
             return musicTitle === searchTitle || 
