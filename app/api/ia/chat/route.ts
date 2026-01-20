@@ -186,7 +186,7 @@ async function findMusicByName(supabase: any, musicName: string): Promise<Musica
           if (!errorWord && musicasWord) {
             // Adiciona apenas músicas que ainda não estão na lista
             musicasWord.forEach((m: any) => {
-              if (!allResults.find(existing => existing.id === m.id)) {
+              if (!allResults.find((existing: any) => existing.id === m.id)) {
                 allResults.push(m)
               }
             })
@@ -242,7 +242,7 @@ async function findMusicByName(supabase: any, musicName: string): Promise<Musica
   }
 
   // Tenta encontrar match exato primeiro (sem acentos)
-  const exactMatch = musicas.find(m => 
+  const exactMatch = musicas.find((m: any) => 
     normalizeForSearch(m.titulo) === normalizedName
   )
 
@@ -258,7 +258,7 @@ async function findMusicByName(supabase: any, musicName: string): Promise<Musica
   }
 
   // Se não encontrou exato, tenta match que começa com o nome
-  const startsWithMatch = musicas.find(m => 
+  const startsWithMatch = musicas.find((m: any) => 
     normalizeForSearch(m.titulo).startsWith(normalizedName)
   )
 
@@ -276,7 +276,7 @@ async function findMusicByName(supabase: any, musicName: string): Promise<Musica
   // Tenta match que contém todas as palavras do nome buscado
   const searchWords = normalizedName.split(/\s+/).filter(w => w.length > 0)
   if (searchWords.length > 1) {
-    const containsAllWords = musicas.find(m => {
+    const containsAllWords = musicas.find((m: any) => {
       const musicTitle = normalizeForSearch(m.titulo)
       return searchWords.every(word => musicTitle.includes(word))
     })
@@ -295,7 +295,7 @@ async function findMusicByName(supabase: any, musicName: string): Promise<Musica
 
   // Estratégia adicional: busca por similaridade (contém pelo menos 70% das palavras)
   if (searchWords.length > 1) {
-    const bestMatch = musicas.find(m => {
+    const bestMatch = musicas.find((m: any) => {
       const musicTitle = normalizeForSearch(m.titulo)
       const matchingWords = searchWords.filter(word => musicTitle.includes(word))
       const matchPercentage = matchingWords.length / searchWords.length
@@ -490,8 +490,8 @@ async function handleTheological(
     }
 
     // Filtra músicas mencionadas na resposta
-    const relevantMusics = musicasContext.filter(m => 
-      mentionedTitles.some(title => m.titulo === title)
+    const relevantMusics = musicasContext.filter((m: MusicaContext) => 
+      mentionedTitles.some((title: string) => m.titulo === title)
     )
 
     // Adiciona músicas relevantes ao retorno
@@ -499,7 +499,7 @@ async function handleTheological(
       console.log(`✅ Encontradas ${relevantMusics.length} músicas relacionadas na resposta da IA`)
       return {
         ...aiResponse,
-        musicas: relevantMusics.map(m => ({
+        musicas: relevantMusics.map((m: MusicaContext) => ({
           id: m.id,
           titulo: m.titulo,
           temLetras: m.letras.length > 0,
