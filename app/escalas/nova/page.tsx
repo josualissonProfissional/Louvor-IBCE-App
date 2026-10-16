@@ -280,7 +280,7 @@ export default function NovaEscalaPage() {
         {/* Seleção de Data */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Data de Atuação *
+            Data do Culto *
           </label>
           <select
             value={dataSelecionada}
@@ -288,7 +288,7 @@ export default function NovaEscalaPage() {
             required
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
           >
-            <option value="">Selecione uma data de atuação</option>
+            <option value="">Selecione uma data de culto</option>
             {diasAtuacao.map((dia) => (
               <option key={dia.id} value={dia.data}>
                 {formatDate(dia.data)} - {getDayName(dia.data)}

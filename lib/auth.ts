@@ -13,7 +13,9 @@ export async function getCurrentUser(): Promise<Usuario | null> {
   } = await supabase.auth.getUser()
 
   if (authError || !user) {
-    console.error('Erro ao obter usuário autenticado:', authError)
+    if (authError && authError.name !== 'AuthSessionMissingError') {
+      console.error('Erro ao obter usuário autenticado:', authError)
+    }
     return null
   }
 

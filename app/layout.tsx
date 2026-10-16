@@ -1,13 +1,17 @@
 // Layout raiz da aplicação
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import { ColorSchemeScript, mantineHtmlProps } from '@mantine/core'
+import '@mantine/core/styles.css'
+import '@mantine/dates/styles.css'
+import '@mantine/notifications/styles.css'
 import './globals.css'
-import { ThemeProvider } from '@/components/ThemeProvider'
-import { Header } from '@/components/Header'
+import { AppProvider } from '@/components/AppProvider'
+import { AppFrame } from '@/components/AppFrame'
 import { YouTubePlayerProvider } from '@/components/YouTubePlayer'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
 export const metadata: Metadata = {
   title: 'Ministério de Louvor IBCE',
@@ -24,24 +28,16 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="pt-BR" suppressHydrationWarning className="overflow-x-hidden">
+    <html lang="pt-BR" {...mantineHtmlProps}>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Open+Sans:wght@300;400;500;600;700&family=Lato:wght@300;400;700&family=Montserrat:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&family=Raleway:wght@300;400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
+        <ColorSchemeScript defaultColorScheme="auto" />
       </head>
-      <body className={`${inter.className} overflow-x-hidden`}>
-        <ThemeProvider>
+      <body className={inter.variable}>
+        <AppProvider>
           <YouTubePlayerProvider>
-            <Header />
-            <main className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
-              {children}
-            </main>
+            <AppFrame>{children}</AppFrame>
           </YouTubePlayerProvider>
-        </ThemeProvider>
+        </AppProvider>
         <SpeedInsights />
       </body>
     </html>

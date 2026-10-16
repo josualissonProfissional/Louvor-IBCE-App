@@ -1,304 +1,195 @@
 'use client'
 
-// Calendário de disponibilidade
-import { useState, useEffect } from 'react'
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns'
-import ptBR from 'date-fns/locale/pt-BR'
-import { DiaAtuacao, Disponibilidade, NovaDisponibilidade, AtualizarDisponibilidade } from '@/types'
+import { useEffect, useState } from 'react'
+import { format, isSameDay } from 'date-fns'
+import { Badge, Box, Card, Grid, Group, Loader, Paper, SimpleGrid, Skeleton, Stack, Text, ThemeIcon } from '@mantine/core'
+import { Calendar, DatesProvider } from '@mantine/dates'
+import { notifications } from '@mantine/notifications'
+import { IconCheck, IconX } from '@tabler/icons-react'
+import 'dayjs/locale/pt-br'
+import { AtualizarDisponibilidade, DiaAtuacao, Disponibilidade, NovaDisponibilidade } from '@/types'
 import { createClient } from '@/lib/supabase/client'
+import styles from './CalendarBoard.module.css'
 
-interface DisponibilidadeCalendarProps {
-  diasAtuacao: DiaAtuacao[]
-  disponibilidade: Disponibilidade[]
-  userId: string
-}
+const parseDate = (value: string) => { const [y, m, d] = value.split('-').map(Number); return new Date(y, m - 1, d, 12) }
 
-export default function DisponibilidadeCalendar({
-  diasAtuacao,
-  disponibilidade: initialDisponibilidade,
-  userId,
-}: DisponibilidadeCalendarProps) {
-  const [currentDate, setCurrentDate] = useState(new Date())
-  const [disponibilidade, setDisponibilidade] = useState(initialDisponibilidade)
-  const [loading, setLoading] = useState(false)
-  const [diasAtuacaoCompletos, setDiasAtuacaoCompletos] = useState<DiaAtuacao[]>(diasAtuacao)
+export default function DisponibilidadeCalendar({ diasAtuacao, disponibilidade: initial, userId, initialDate }: { diasAtuacao: DiaAtuacao[]; disponibilidade: Disponibilidade[]; userId: string; initialDate: string }) {
+  const [month, setMonth] = useState(() => parseDate(initialDate))
+  const [mounted, setMounted] = useState(false)
+  const [days, setDays] = useState(diasAtuacao)
+  const [availability, setAvailability] = useState(initial)
+  const [loadingDate, setLoadingDate] = useState<string | null>(null)
 
-  const monthStart = startOfMonth(currentDate)
-  const monthEnd = endOfMonth(currentDate)
-  const days = eachDayOfInterval({ start: monthStart, end: monthEnd })
+  useEffect(() => setMounted(true), [])
 
-  // Carrega dias de atuação quando o mês do calendário muda
   useEffect(() => {
-    async function loadDiasAtuacao() {
-      const monthStart = startOfMonth(currentDate)
-      const monthEnd = endOfMonth(currentDate)
-      
-      try {
-        const response = await fetch(
-          `/api/dias-atuacao?data_inicio=${format(monthStart, 'yyyy-MM-dd')}&data_fim=${format(monthEnd, 'yyyy-MM-dd')}`
-        )
-        if (response.ok) {
-          const novosDias = await response.json()
-          // Verifica se a resposta é um array válido
-          if (Array.isArray(novosDias)) {
-            // Combina com os dias já existentes, evitando duplicatas por ID
-            setDiasAtuacaoCompletos((prev) => {
-              const diasMap = new Map<string, DiaAtuacao>()
-              // Adiciona dias anteriores
-              prev.forEach((dia) => {
-                diasMap.set(dia.id, dia)
-              })
-              // Adiciona novos dias (sobrescreve se já existir)
-              novosDias.forEach((novoDia: DiaAtuacao) => {
-                if (novoDia && novoDia.id) {
-                  diasMap.set(novoDia.id, novoDia)
-                }
-              })
-              return Array.from(diasMap.values())
-            })
-          }
-        }
-      } catch (error) {
-        console.error('Erro ao carregar dias de atuação:', error)
-      }
-    }
-
-    loadDiasAtuacao()
-  }, [currentDate])
-
-  // Carrega disponibilidade quando o mês do calendário muda
-  useEffect(() => {
-    async function loadDisponibilidade() {
-      const monthStart = startOfMonth(currentDate)
-      const monthEnd = endOfMonth(currentDate)
-      
-      try {
-        const supabase = createClient()
-        const { data: novaDisponibilidade, error } = await supabase
-          .from('disponibilidade')
-          .select('*')
-          .eq('usuario_id', userId)
-          .gte('data', format(monthStart, 'yyyy-MM-dd'))
-          .lte('data', format(monthEnd, 'yyyy-MM-dd'))
-          .order('data', { ascending: true })
-
-        if (!error && novaDisponibilidade && Array.isArray(novaDisponibilidade)) {
-          setDisponibilidade(novaDisponibilidade)
-        }
-      } catch (error) {
-        console.error('Erro ao carregar disponibilidade:', error)
-      }
-    }
-
-    loadDisponibilidade()
-  }, [currentDate, userId])
-
-  const isDiaAtuacao = (date: Date) => {
-    return diasAtuacaoCompletos.some((dia) => {
-      // Parse seguro da data para evitar problemas de timezone
-      const [year, month, day] = dia.data.split('-').map(Number)
-      const diaDate = new Date(year, month - 1, day, 12, 0, 0)
-      return isSameDay(diaDate, date)
-    })
-  }
-
-  const getDisponibilidadeDoDia = (date: Date) => {
-    return disponibilidade.find((disp) => {
-      // Parse seguro da data para evitar problemas de timezone
-      const [year, month, day] = disp.data.split('-').map(Number)
-      const dispDate = new Date(year, month - 1, day, 12, 0, 0)
-      return isSameDay(dispDate, date)
-    })
-  }
-
-  const toggleDisponibilidade = async (date: Date) => {
-    if (!isDiaAtuacao(date)) return
-
-    setLoading(true)
+    const start = format(new Date(month.getFullYear(), month.getMonth(), 1), 'yyyy-MM-dd')
+    const end = format(new Date(month.getFullYear(), month.getMonth() + 1, 0), 'yyyy-MM-dd')
+    fetch(`/api/dias-atuacao?data_inicio=${start}&data_fim=${end}`).then(async (r) => r.ok && setDays(await r.json())).catch(console.error)
     const supabase = createClient()
-    const dateStr = format(date, 'yyyy-MM-dd')
+    supabase.from('disponibilidade').select('*').eq('usuario_id', userId).gte('data', start).lte('data', end).order('data').then(({ data }) => data && setAvailability(data))
+  }, [month, userId])
 
-    const existing = getDisponibilidadeDoDia(date)
+  const isActing = (date: Date) => days.some((day) => isSameDay(parseDate(day.data), date))
+  const getStatus = (date: Date) => availability.find((item) => isSameDay(parseDate(item.data), date))
 
+  const toggle = async (date: Date) => {
+    if (!isActing(date)) return
+    const dateString = format(date, 'yyyy-MM-dd'); setLoadingDate(dateString)
+    const existing = getStatus(date); const supabase = createClient()
     try {
       if (existing) {
-        // Alterna entre disponível e indisponível
-        const newStatus = existing.status === 'disponivel' ? 'indisponivel' : 'disponivel'
-        const updateData: AtualizarDisponibilidade = {
-          status: newStatus,
-        }
-        const query = supabase.from('disponibilidade') as any
-        const { error } = await query
-          .update(updateData)
-          .eq('id', existing.id)
-
-        if (!error) {
-          setDisponibilidade(prev =>
-            prev.map(disp =>
-              disp.id === existing.id ? { ...disp, status: newStatus } : disp
-            )
-          )
-        }
+        const status = existing.status === 'disponivel' ? 'indisponivel' : 'disponivel'
+        const payload: AtualizarDisponibilidade = { status }
+        const { error } = await (supabase.from('disponibilidade') as any).update(payload).eq('id', existing.id)
+        if (error) throw error
+        setAvailability((current) => current.map((item) => item.id === existing.id ? { ...item, status } : item))
       } else {
-        // Cria nova disponibilidade como disponível
-        const disponibilidadeData: NovaDisponibilidade = {
-          usuario_id: userId,
-          data: dateStr,
-          status: 'disponivel',
-        }
-        const { data, error } = await supabase
-          .from('disponibilidade')
-          .insert(disponibilidadeData as any)
-          .select()
-          .single()
-
-        if (!error && data) {
-          setDisponibilidade(prev => [...prev, data])
-        }
+        const payload: NovaDisponibilidade = { usuario_id: userId, data: dateString, status: 'disponivel' }
+        const { data, error } = await supabase.from('disponibilidade').insert(payload as any).select().single()
+        if (error) throw error
+        if (data) setAvailability((current) => [...current, data])
       }
     } catch (error) {
-      console.error('Erro ao atualizar disponibilidade:', error)
-    } finally {
-      setLoading(false)
-    }
+      notifications.show({ color: 'red', title: 'Não foi possível salvar', message: 'Tente novamente em instantes.' })
+    } finally { setLoadingDate(null) }
   }
 
-  const previousMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))
-  }
+  const available = availability.filter((item) => item.status === 'disponivel').length
+  const unavailable = availability.filter((item) => item.status === 'indisponivel').length
 
-  const nextMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))
+  const renderDay = (value: string) => {
+    const date = parseDate(value)
+    const acting = isActing(date)
+    const status = getStatus(date)
+    const isAvailable = status?.status === 'disponivel'
+    const isUnavailable = status?.status === 'indisponivel'
+
+    return (
+      <Stack gap={2} align="stretch" w="100%">
+        <Group justify="space-between" align="center" wrap="nowrap">
+          <Text
+            size="sm"
+            fw={acting ? 700 : 500}
+            c={isAvailable ? 'white' : isUnavailable ? 'red.8' : acting ? 'ibce.9' : undefined}
+          >
+            {date.getDate()}
+          </Text>
+          {acting && (
+            <Badge
+              size="xs"
+              variant={isAvailable ? 'white' : isUnavailable ? 'light' : 'light'}
+              color={isUnavailable ? 'red' : 'ibce'}
+              radius="xs"
+              px={4}
+              h={{ base: 14, sm: 16 }}
+              fz={{ base: 8, sm: 9 }}
+              fw={700}
+            >
+              Culto
+            </Badge>
+          )}
+        </Group>
+
+        {status && (
+          <Badge
+            size="xs"
+            variant={isAvailable ? 'white' : 'filled'}
+            color={isAvailable ? 'ibce' : 'red'}
+            radius="xs"
+            px={4}
+            h={{ base: 14, sm: 16 }}
+            fz={{ base: 8, sm: 9 }}
+            fw={700}
+            mt={1}
+          >
+            {isAvailable ? 'Disponível' : 'Indisponível'}
+          </Badge>
+        )}
+
+        {loadingDate === value && (
+          <Loader size={9} color={isAvailable ? 'white' : isUnavailable ? 'red' : 'ibce'} mt={2} />
+        )}
+      </Stack>
+    )
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 sm:p-6">
-      <div className="flex items-center justify-between mb-3 sm:mb-4">
-        <button
-          onClick={previousMonth}
-          className="px-2 sm:px-3 py-1 sm:py-2 bg-primary text-white rounded hover:bg-primary-light transition-colors text-sm sm:text-base"
-          aria-label="Mês anterior"
-        >
-          ←
-        </button>
-        <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
-          {format(currentDate, 'MMMM yyyy', { locale: ptBR })}
-        </h3>
-        <button
-          onClick={nextMonth}
-          className="px-2 sm:px-3 py-1 sm:py-2 bg-primary text-white rounded hover:bg-primary-light transition-colors text-sm sm:text-base"
-          aria-label="Próximo mês"
-        >
-          →
-        </button>
-      </div>
+    <Grid gutter="lg" align="flex-start">
+      <Grid.Col span={{ base: 12, xl: 9 }}>
+        <Card withBorder padding="lg" bg="var(--app-surface)">
+          {mounted ? (
+            <DatesProvider settings={{ locale: 'pt-br', firstDayOfWeek: 0, weekendDays: [0, 6] }}>
+              <Calendar
+                date={format(month, 'yyyy-MM-dd')}
+                onDateChange={(value) => setMonth(parseDate(value))}
+                renderDay={renderDay}
+                highlightToday
+                getDayProps={(value) => {
+                  const date = parseDate(value)
+                  const active = isActing(date)
+                  const status = getStatus(date)
+                  const isAvailable = status?.status === 'disponivel'
+                  const isUnavailable = status?.status === 'indisponivel'
 
-      <div className="mb-3 sm:mb-4 flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm">
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <div className="w-3 h-3 sm:w-4 sm:h-4 bg-green-100 dark:bg-green-900 border border-green-500 rounded"></div>
-          <span className="text-gray-700 dark:text-gray-300 whitespace-nowrap">Dia de atuação</span>
-        </div>
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <div className="w-3 h-3 sm:w-4 sm:h-4 bg-blue-500 rounded"></div>
-          <span className="text-gray-700 dark:text-gray-300 whitespace-nowrap">Disponível</span>
-        </div>
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <div className="w-3 h-3 sm:w-4 sm:h-4 bg-red-500 rounded"></div>
-          <span className="text-gray-700 dark:text-gray-300 whitespace-nowrap">Indisponível</span>
-        </div>
-      </div>
+                  let dayClass = styles.dayDisabled
+                  if (active) {
+                    if (isUnavailable) {
+                      dayClass = styles.dayUnavailable
+                    } else if (isAvailable) {
+                      dayClass = styles.dayAvailable
+                    } else {
+                      dayClass = styles.dayCulto
+                    }
+                  }
 
-      <div className="grid grid-cols-7 gap-1 sm:gap-2">
-        {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-          <div
-            key={day}
-            className="text-center text-xs sm:text-sm font-semibold text-gray-600 dark:text-gray-400 py-1 sm:py-2"
-          >
-            {day}
-          </div>
-        ))}
-
-        {/* Células vazias para alinhar o primeiro dia do mês com o dia da semana correto */}
-        {Array.from({ length: monthStart.getDay() }).map((_, index) => (
-          <div key={`empty-${index}`} className="min-h-[50px] sm:min-h-[60px] p-1 sm:p-2" />
-        ))}
-
-        {days.map(day => {
-          const isAtuacao = isDiaAtuacao(day)
-          const disp = getDisponibilidadeDoDia(day)
-          const isToday = isSameDay(day, new Date())
-
-          // Determina a cor de fundo baseada no status de disponibilidade
-          // Se for hoje, sempre usa amarelo como destaque principal
-          let bgColor = ''
-          let textColor = ''
-          let borderColor = ''
-          
-          if (isToday) {
-            bgColor = 'bg-yellow-200 dark:bg-yellow-800'
-            textColor = 'text-yellow-900 dark:text-yellow-100'
-            borderColor = 'border-yellow-400 dark:border-yellow-600'
-          } else if (isAtuacao) {
-            if (disp?.status === 'disponivel') {
-              bgColor = 'bg-blue-500 dark:bg-blue-600'
-              textColor = 'text-white'
-              borderColor = 'border-green-500'
-            } else if (disp?.status === 'indisponivel') {
-              bgColor = 'bg-red-500 dark:bg-red-600'
-              textColor = 'text-white'
-              borderColor = 'border-green-500'
-            } else {
-              bgColor = 'bg-green-100 dark:bg-green-900'
-              textColor = 'text-gray-900 dark:text-white'
-              borderColor = 'border-green-500'
-            }
-          } else {
-            bgColor = 'bg-gray-100 dark:bg-gray-700'
-            textColor = 'text-gray-500 dark:text-gray-400'
-            borderColor = ''
-          }
-
-          return (
-            <button
-              key={day.toISOString()}
-              onClick={() => toggleDisponibilidade(day)}
-              disabled={!isAtuacao || loading}
-              className={`
-                min-h-[50px] sm:min-h-[60px] p-1 sm:p-2 border rounded text-left transition-colors
-                ${bgColor}
-                ${textColor}
-                ${borderColor}
-                ${isAtuacao ? 'cursor-pointer hover:opacity-80' : 'opacity-50 cursor-not-allowed'}
-                ${isToday ? 'ring-2 ring-yellow-400 dark:ring-yellow-600' : ''}
-              `}
-            >
-              <div className={`text-xs sm:text-sm font-semibold ${isToday ? 'font-bold' : ''}`}>
-                {format(day, 'd')}
-                {isToday && (
-                  <span className="ml-1 text-[9px] sm:text-[10px]">Hoje</span>
-                )}
-              </div>
-              {disp && !isToday && (
-                <div className={`text-[10px] sm:text-xs mt-0.5 sm:mt-1 font-bold ${disp.status === 'disponivel' ? 'text-white' : 'text-white'}`}>
-                  {disp.status === 'disponivel' ? '✓' : '✗'}
-                  <span className="hidden sm:inline ml-1">
-                    {disp.status === 'disponivel' ? 'Disponível' : 'Indisponível'}
-                  </span>
-                </div>
-              )}
-              {isToday && disp && (
-                <div className={`text-[10px] sm:text-xs mt-0.5 sm:mt-1 font-bold ${textColor}`}>
-                  {disp.status === 'disponivel' ? '✓' : '✗'}
-                  <span className="hidden sm:inline ml-1">
-                    {disp.status === 'disponivel' ? 'Disponível' : 'Indisponível'}
-                  </span>
-                </div>
-              )}
-            </button>
-          )
-        })}
-      </div>
-    </div>
+                  return {
+                    'aria-disabled': !active,
+                    selected: isAvailable,
+                    'data-status': status?.status,
+                    'data-culto': active ? 'true' : undefined,
+                    className: dayClass,
+                    onClick: () => active && !loadingDate && toggle(date)
+                  }
+                }}
+                className={styles.calendar}
+                classNames={{ calendarHeader: styles.header, month: styles.month, monthCell: styles.cell, day: styles.day }}
+                ariaLabels={{ nextMonth: 'Próximo mês', previousMonth: 'Mês anterior', monthLevelControl: 'Selecionar mês' }}
+              />
+            </DatesProvider>
+          ) : (
+            <Skeleton h={510} radius="sm" />
+          )}
+        </Card>
+      </Grid.Col>
+      <Grid.Col span={{ base: 12, xl: 3 }}>
+        <Stack gap="md">
+          <Paper withBorder p="lg" bg="var(--app-surface)">
+            <Text fw={700}>Como preencher</Text>
+            <Text size="sm" c="dimmed" mt="xs">Clique em um dia de culto para alternar entre disponível e indisponível.</Text>
+          </Paper>
+          <SimpleGrid cols={{ base: 2, xl: 1 }}>
+            <Paper withBorder p="md" bg="var(--app-surface)">
+              <Group>
+                <ThemeIcon color="green" variant="light"><IconCheck size={18} /></ThemeIcon>
+                <Box>
+                  <Text size="xl" fw={700}>{available}</Text>
+                  <Text size="xs" c="dimmed">Disponíveis</Text>
+                </Box>
+              </Group>
+            </Paper>
+            <Paper withBorder p="md" bg="var(--app-surface)">
+              <Group>
+                <ThemeIcon color="red" variant="light"><IconX size={18} /></ThemeIcon>
+                <Box>
+                  <Text size="xl" fw={700}>{unavailable}</Text>
+                  <Text size="xs" c="dimmed">Indisponíveis</Text>
+                </Box>
+              </Group>
+            </Paper>
+          </SimpleGrid>
+        </Stack>
+      </Grid.Col>
+    </Grid>
   )
 }
-

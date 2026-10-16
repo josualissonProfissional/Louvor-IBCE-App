@@ -1,16 +1,19 @@
 // Página de disponibilidade
 import { redirect } from 'next/navigation'
-import { getCurrentUser, requireAuth } from '@/lib/auth'
+import { getCurrentUser } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import DisponibilidadeCalendar from '@/components/DisponibilidadeCalendar'
+import { Stack, Text, Title } from '@mantine/core'
 
 export default async function DisponibilidadePage() {
-  const user = await requireAuth()
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
 
   const supabase = createServerClient()
 
   // Busca dias de atuação do mês atual
   const today = new Date()
+  const initialDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
   const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
   const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
 
@@ -30,17 +33,16 @@ export default async function DisponibilidadePage() {
     .lte('data', endOfMonth.toISOString().split('T')[0])
 
   return (
-    <div className="container mx-auto px-4 py-4 sm:py-6 lg:py-8 max-w-7xl">
-      <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-gray-900 dark:text-white">
-        Minha Disponibilidade
-      </h1>
+    <Stack gap="lg">
+      <div><Title order={1} size="h2">Minha disponibilidade</Title><Text c="dimmed" mt={4}>Informe em quais dias você poderá servir.</Text></div>
 
       <DisponibilidadeCalendar
         diasAtuacao={diasAtuacao || []}
         disponibilidade={disponibilidade || []}
         userId={user.id}
+        initialDate={initialDate}
       />
-    </div>
+    </Stack>
   )
 }
 

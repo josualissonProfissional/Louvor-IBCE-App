@@ -1,12 +1,15 @@
 // Página pública de músicas
-import { createServerClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getCurrentUser } from '@/lib/auth'
 import MusicaList from '@/components/MusicaList'
+import Link from 'next/link'
+import { Button, Group, Stack, Text, Title } from '@mantine/core'
+import { IconMusic, IconPlus } from '@tabler/icons-react'
 
 export const revalidate = 0 // Desabilita cache para sempre buscar dados atualizados
 
 export default async function MusicasPage() {
-  const supabase = createServerClient()
+  const supabase = createAdminClient()
   const user = await getCurrentUser()
 
   // Busca todas as músicas com suas cifras, letras e links do YouTube (acesso público)
@@ -25,23 +28,19 @@ export default async function MusicasPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6 animate-fade-in">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          Músicas
-        </h1>
+    <Stack gap="lg">
+      <Group justify="space-between" align="flex-start">
+        <div>
+          <Title order={1} size="h2">Repertório</Title>
+          <Text c="dimmed" mt={4}>Letras, cifras e referências musicais do ministério.</Text>
+        </div>
         {user?.lider && (
-          <a
-            href="/musicas/nova"
-            className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-light transition-all duration-300 transform hover:scale-105 hover:shadow-lg font-semibold"
-          >
-            + Adicionar Música
-          </a>
+          <Button component={Link} href="/musicas/nova" leftSection={<IconPlus size={18} />}>Adicionar música</Button>
         )}
-      </div>
+      </Group>
 
       <MusicaList musicas={musicas || []} isAdmin={user?.lider || false} />
-    </div>
+    </Stack>
   )
 }
 

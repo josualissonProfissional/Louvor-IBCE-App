@@ -1,0 +1,79 @@
+.calendar {
+  width: 100%;
+}
+
+.calendarHeader {
+  width: 100%;
+  max-width: none;
+  margin-bottom: var(--mantine-spacing-md);
+}
+
+.month {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.monthCell {
+  padding: 4px;
+}
+
+.day {
+  width: 100%;
+  height: 72px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--mantine-radius-sm);
+}
+
+.scheduleCard {
+  border-top: 3px solid var(--mantine-color-olive-6);
+}
+
+.calendarCard {
+  border-top: 3px solid var(--mantine-color-ibce-6);
+}
+
+.birthdayPanel {
+  border-inline-start: 3px solid var(--mantine-color-pink-5);
+  background: var(--mantine-color-pink-light) !important;
+}
+
+.day[data-birthday='true']:not([data-selected]) {
+  background: var(--mantine-color-pink-light);
+  box-shadow: inset 0 -3px 0 var(--mantine-color-pink-5);
+}
+
+[data-mantine-color-scheme='dark'] .scheduleCard {
+  background: color-mix(in srgb, var(--app-surface) 91%, var(--mantine-color-olive-8)) !important;
+  border-color: var(--mantine-color-olive-8);
+  border-top-color: var(--mantine-color-olive-5);
+}
+
+[data-mantine-color-scheme='dark'] .calendarCard {
+  background: color-mix(in srgb, var(--app-surface) 92%, var(--mantine-color-ibce-8)) !important;
+  border-color: var(--mantine-color-ibce-8);
+  border-top-color: var(--mantine-color-ibce-4);
+}
+
+[data-mantine-color-scheme='dark'] .birthdayPanel {
+  background: color-mix(in srgb, var(--app-surface) 90%, var(--mantine-color-pink-9)) !important;
+  border-color: var(--mantine-color-pink-9);
+  border-inline-start-color: var(--mantine-color-pink-5);
+}
+
+.day:hover:not([data-disabled]) {
+  background: var(--mantine-color-ibce-light);
+}
+
+.day[aria-disabled='true'] {
+  cursor: default;
+}
+
+@media (max-width: 36em) {
+  .monthCell {
+    padding: 2px;
+  }
+
+  .day {
+    height: 60px;
+  }
+}

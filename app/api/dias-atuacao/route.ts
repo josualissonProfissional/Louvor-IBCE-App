@@ -41,39 +41,69 @@ export async function POST(request: NextRequest) {
     const supabase = createServerClient()
     const body = await request.json()
 
-    let { data: dataAtuacao } = body
-
-    // Garante que a data está no formato YYYY-MM-DD
-    // Se vier como timestamp ou outro formato, converte
-    if (dataAtuacao.includes('T') || dataAtuacao.includes('Z')) {
-      const date = new Date(dataAtuacao)
-      const year = date.getFullYear()
-      const month = String(date.getMonth() + 1).padStart(2, '0')
-      const day = String(date.getDate()).padStart(2, '0')
-      dataAtuacao = `${year}-${month}-${day}`
+    // Mantém compatibilidade com o formato antigo { data } e aceita o novo lote { datas }.
+    const receivedDates: unknown[] = Array.isArray(body.datas) ? body.datas : [body.data]
+    if (receivedDates.length === 0 || receivedDates.length > 100) {
+      return NextResponse.json({ error: 'Selecione entre 1 e 100 datas' }, { status: 400 })
     }
 
-    // Valida formato da data (YYYY-MM-DD)
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dataAtuacao)) {
-      throw new Error('Formato de data inválido. Use YYYY-MM-DD')
-    }
+    const normalizedDates = [...new Set(receivedDates.map((value) => {
+      if (typeof value !== 'string') throw new Error('Todas as datas devem ser válidas')
+      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value
+      const parsed = new Date(value)
+      if (Number.isNaN(parsed.getTime())) throw new Error('Formato de data inválido. Use AAAA-MM-DD')
+      return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`
+    }))]
 
-    const diaAtuacaoData: NovoDiaAtuacao = {
-      data: dataAtuacao,
-    }
-
-    const { data, error } = await supabase
+    const { data: existing, error: lookupError } = await supabase
       .from('dias_atuacao')
-      .insert(diaAtuacaoData as any)
-      .select()
-      .single()
+      .select('data')
+      .in('data', normalizedDates)
+    if (lookupError) throw lookupError
 
-    if (error) throw error
+    const existingDates = new Set((existing || []).map((item: { data: string }) => item.data))
+    const datesToCreate = normalizedDates.filter((date) => !existingDates.has(date))
+    const rows: NovoDiaAtuacao[] = datesToCreate.map((data) => ({ data }))
 
-    return NextResponse.json(data, { status: 201 })
+    let created: unknown[] = []
+    if (rows.length > 0) {
+      const { data, error } = await supabase.from('dias_atuacao').insert(rows as any).select()
+      if (error) throw error
+      created = data || []
+    }
+
+    return NextResponse.json({
+      success: true,
+      created: created.length,
+      skipped: normalizedDates.length - datesToCreate.length,
+      dates: created,
+    }, { status: datesToCreate.length > 0 ? 201 : 200 })
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || 'Erro ao criar dia de atuação' },
+      { status: 400 }
+    )
+  }
+}
+
+// DELETE - Remove vários dias de atuação de uma vez (apenas admin)
+export async function DELETE(request: NextRequest) {
+  try {
+    await requireAdmin()
+    const { ids } = await request.json()
+
+    if (!Array.isArray(ids) || ids.length === 0 || ids.some((id) => typeof id !== 'string')) {
+      return NextResponse.json({ error: 'Selecione ao menos uma data válida' }, { status: 400 })
+    }
+
+    const supabase = createServerClient()
+    const { error } = await supabase.from('dias_atuacao').delete().in('id', ids)
+    if (error) throw error
+
+    return NextResponse.json({ success: true, count: ids.length })
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message || 'Erro ao remover dias de atuação' },
       { status: 400 }
     )
   }

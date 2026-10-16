@@ -1,372 +1,233 @@
 'use client'
 
-// Página de gerenciamento de dias de atuação
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import {
+  Alert, Badge, Button, Card, Checkbox, Group, Modal, Paper, Select,
+  Skeleton, Stack, Table, Text, Title,
+} from '@mantine/core'
+import { DatePicker } from '@mantine/dates'
+import { modals } from '@mantine/modals'
+import { notifications } from '@mantine/notifications'
+import {
+  IconAlertCircle, IconArrowLeft, IconCalendarPlus, IconCheck,
+  IconTrash,
+} from '@tabler/icons-react'
 import { DiaAtuacao } from '@/types'
-import { formatDate } from '@/lib/utils'
-import Calendar from 'react-calendar'
-import 'react-calendar/dist/Calendar.css'
+import { formatDate, getDayName } from '@/lib/utils'
+
+const currentMonth = () => {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+}
+
+const formatMonth = (value: string) => {
+  const [year, month] = value.split('-').map(Number)
+  return new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' })
+    .format(new Date(year, month - 1, 1))
+    .replace(/^./, (letter) => letter.toUpperCase())
+}
 
 export default function DiasAtuacaoPage() {
-  const [diasAtuacao, setDiasAtuacao] = useState<DiaAtuacao[]>([])
+  const [dias, setDias] = useState<DiaAtuacao[]>([])
+  const [month, setMonth] = useState(currentMonth())
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [selectedDates, setSelectedDates] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [showCalendar, setShowCalendar] = useState(false)
-  
-  // Estados para busca e filtros
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filterMonth, setFilterMonth] = useState<string>('todos')
-  const [sortOrder, setSortOrder] = useState<'data-recente' | 'data-antiga'>('data-recente')
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [addOpened, setAddOpened] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadDiasAtuacao()
-  }, [])
-
-  const loadDiasAtuacao = async () => {
+  const loadDias = useCallback(async () => {
     try {
+      setError(null)
       const response = await fetch('/api/dias-atuacao')
-      if (response.ok) {
-        const data = await response.json()
-        setDiasAtuacao(data)
-      }
-    } catch (error) {
-      console.error('Erro ao carregar dias de atuação:', error)
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Não foi possível carregar as datas')
+      setDias(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível carregar as datas')
     } finally {
       setLoading(false)
     }
+  }, [])
+
+  useEffect(() => { loadDias() }, [loadDias])
+
+  const monthOptions = useMemo(() => {
+    const values = new Set(dias.map((dia) => dia.data.slice(0, 7)))
+    values.add(currentMonth())
+    return [...values].sort().reverse().map((value) => ({ value, label: formatMonth(value) }))
+  }, [dias])
+
+  const visibleDays = useMemo(
+    () => dias.filter((dia) => dia.data.startsWith(month)).sort((a, b) => a.data.localeCompare(b.data)),
+    [dias, month]
+  )
+  const visibleIds = visibleDays.map((dia) => dia.id)
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id))
+  const selectedCount = selectedIds.length
+
+  const toggleAll = () => {
+    setSelectedIds((current) => allVisibleSelected
+      ? current.filter((id) => !visibleIds.includes(id))
+      : [...new Set([...current, ...visibleIds])])
   }
 
-  const handleAddDate = async (date: Date) => {
-    setLoading(true)
+  const addDays = async () => {
+    if (selectedDates.length === 0) return
+    setSaving(true)
     try {
-      // Extrai os componentes da data usando métodos locais
-      const year = date.getFullYear()
-      const month = date.getMonth() + 1 // getMonth() retorna 0-11, então +1 para 1-12
-      const day = date.getDate()
-      
-      // Formata diretamente
-      const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-      
       const response = await fetch('/api/dias-atuacao', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: dateStr }),
+        body: JSON.stringify({ datas: selectedDates }),
       })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error)
-      }
-
-      setShowCalendar(false)
-      setSelectedDate(null)
-      loadDiasAtuacao()
-    } catch (error: any) {
-      alert('Erro ao adicionar dia: ' + error.message)
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Não foi possível adicionar as datas')
+      const firstDate = [...selectedDates].sort()[0]
+      setMonth(firstDate.slice(0, 7))
+      setSelectedDates([])
+      setAddOpened(false)
+      await loadDias()
+      notifications.show({
+        color: 'green',
+        title: data.created === 1 ? 'Data adicionada' : 'Datas adicionadas',
+        message: `${data.created} ${data.created === 1 ? 'dia foi cadastrado' : 'dias foram cadastrados'}${data.skipped ? `; ${data.skipped} já existiam.` : '.'}`,
+        icon: <IconCheck size={17} />,
+      })
+    } catch (err) {
+      notifications.show({ color: 'red', title: 'Erro ao adicionar datas', message: err instanceof Error ? err.message : 'Tente novamente.' })
     } finally {
-      setLoading(false)
+      setSaving(false)
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja remover este dia de atuação?')) return
-
+  const deleteDays = async (ids: string[]) => {
+    setDeleting(true)
     try {
-      const response = await fetch(`/api/dias-atuacao/${id}`, {
+      const response = await fetch('/api/dias-atuacao', {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
       })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error)
-      }
-
-      loadDiasAtuacao()
-    } catch (error: any) {
-      alert('Erro ao remover dia: ' + error.message)
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Não foi possível excluir')
+      setSelectedIds((current) => current.filter((id) => !ids.includes(id)))
+      await loadDias()
+      notifications.show({ color: 'green', title: ids.length > 1 ? 'Datas excluídas' : 'Data excluída', message: `${ids.length} ${ids.length > 1 ? 'datas foram removidas' : 'data foi removida'}.` })
+    } catch (err) {
+      notifications.show({ color: 'red', title: 'Erro ao excluir', message: err instanceof Error ? err.message : 'Tente novamente.' })
+    } finally {
+      setDeleting(false)
     }
   }
 
-  const isDateMarked = (date: Date) => {
-    // Formata a data para comparação no timezone local
-    const formatDateForComparison = (d: Date) => {
-      // Cria uma data normalizada no meio-dia local
-      const normalized = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0)
-      const year = normalized.getFullYear()
-      const month = normalized.getMonth()
-      const day = normalized.getDate()
-      return `${year}-${month}-${day}`
-    }
-    
-    return diasAtuacao.some((dia) => {
-      // Parse da data do banco (formato YYYY-MM-DD)
-      const [year, month, day] = dia.data.split('-').map(Number)
-      const diaDate = new Date(year, month - 1, day, 12, 0, 0)
-      return formatDateForComparison(diaDate) === formatDateForComparison(date)
-    })
-  }
-
-  // Função para obter meses/anos únicos dos dias de atuação
-  const getAvailableMonths = () => {
-    const months = new Set<string>()
-    diasAtuacao.forEach((dia) => {
-      const [year, month] = dia.data.split('-').map(Number)
-      const monthKey = `${year}-${String(month).padStart(2, '0')}`
-      months.add(monthKey)
-    })
-    return Array.from(months).sort().reverse()
-  }
-
-  // Função para formatar mês/ano para exibição
-  const formatMonthLabel = (monthKey: string) => {
-    const [year, month] = monthKey.split('-').map(Number)
-    const monthNames = [
-      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-    ]
-    return `${monthNames[month - 1]} ${year}`
-  }
-
-  // Função para filtrar e ordenar dias de atuação
-  const filteredAndSortedDias = diasAtuacao
-    .filter((dia) => {
-      // Filtro de busca
-      const searchLower = searchTerm.toLowerCase()
-      const [year, month, day] = dia.data.split('-').map(Number)
-      const date = new Date(year, month - 1, day)
-      const dayNames = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
-      const dayName = dayNames[date.getDay()]
-      const dateStr = formatDate(dia.data).toLowerCase()
-      
-      const matchesSearch = searchTerm === '' || 
-        dateStr.includes(searchLower) ||
-        dayName.includes(searchLower)
-      
-      // Filtro de mês
-      const monthKey = `${year}-${String(month).padStart(2, '0')}`
-      const matchesMonth = filterMonth === 'todos' || monthKey === filterMonth
-      
-      return matchesSearch && matchesMonth
-    })
-    .sort((a, b) => {
-      const dateA = new Date(a.data).getTime()
-      const dateB = new Date(b.data).getTime()
-      return sortOrder === 'data-recente' 
-        ? dateB - dateA 
-        : dateA - dateB
-    })
-
-  if (loading && diasAtuacao.length === 0) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <p className="text-gray-600 dark:text-gray-400">Carregando...</p>
-      </div>
-    )
-  }
-
-  const availableMonths = getAvailableMonths()
+  const confirmDelete = (ids: string[]) => modals.openConfirmModal({
+    title: ids.length > 1 ? `Excluir ${ids.length} dias?` : 'Excluir este dia?',
+    children: <Text size="sm">As disponibilidades relacionadas a essas datas também podem ser afetadas. Esta ação não pode ser desfeita.</Text>,
+    labels: { confirm: 'Sim, excluir', cancel: 'Cancelar' },
+    confirmProps: { color: 'red', leftSection: <IconTrash size={16} /> },
+    centered: true,
+    onConfirm: () => deleteDays(ids),
+  })
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
+    <Stack gap="lg">
+      <Group justify="space-between" align="flex-end">
         <div>
-          <Link
-            href="/admin"
-            className="text-primary hover:underline mb-2 inline-block transition-all duration-200 hover:translate-x-1"
-          >
-            ← Voltar
-          </Link>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Dias de Atuação
-          </h1>
+          <Button component={Link} href="/admin" variant="subtle" px={0} leftSection={<IconArrowLeft size={17} />}>Voltar</Button>
+          <Title order={1}>Dias de atuação</Title>
+          <Text c="dimmed">Organize as datas por mês e faça alterações em conjunto.</Text>
         </div>
-        <button
-          onClick={() => setShowCalendar(!showCalendar)}
-          className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-light transition-all duration-300 transform hover:scale-105 hover:shadow-lg font-semibold"
-        >
-          {showCalendar ? '✕ Cancelar' : '+ Adicionar Dia'}
-        </button>
-      </div>
+        <Button leftSection={<IconCalendarPlus size={18} />} onClick={() => { setSelectedDates([]); setAddOpened(true) }}>Adicionar dias</Button>
+      </Group>
 
-      {showCalendar && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6 animate-fade-in">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
-            Selecione uma data
-          </h2>
-          <div className="flex justify-center">
-            <Calendar
-              onChange={(value) => {
-                if (value instanceof Date) {
-                  setSelectedDate(value)
-                }
-              }}
-              value={selectedDate}
-              tileClassName={({ date }) => {
-                if (isDateMarked(date)) {
-                  return 'bg-green-500 text-white rounded'
-                }
-                return ''
-              }}
-              className="w-full max-w-md"
-            />
-          </div>
-          {selectedDate && (
-            <div className="mt-4 flex gap-4">
-              <button
-                onClick={() => handleAddDate(selectedDate)}
-                disabled={loading || isDateMarked(selectedDate)}
-                className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-light disabled:opacity-50 transition-all duration-200"
-              >
-                {isDateMarked(selectedDate)
-                  ? 'Data já cadastrada'
-                  : 'Adicionar Data'}
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedDate(null)
-                  setShowCalendar(false)
-                }}
-                className="bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-white px-4 py-2 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500 transition-all duration-200"
-              >
-                Cancelar
-              </button>
-            </div>
+      {error && <Alert color="red" icon={<IconAlertCircle size={18} />} title="Não foi possível carregar">{error}</Alert>}
+
+      <Paper withBorder p="md" radius="md">
+        <Group justify="space-between" align="flex-end">
+          <Select label="Mês de atuação" data={monthOptions} value={month} onChange={(value) => value && setMonth(value)} allowDeselect={false} w={{ base: '100%', sm: 260 }} />
+          {selectedCount > 0 && (
+            <Button color="red" variant="light" loading={deleting} leftSection={<IconTrash size={17} />} onClick={() => confirmDelete(selectedIds)}>
+              Excluir selecionados ({selectedCount})
+            </Button>
           )}
-        </div>
+        </Group>
+      </Paper>
+
+      {loading ? (
+        <Stack>{[1, 2, 3].map((item) => <Skeleton key={item} h={68} radius="md" />)}</Stack>
+      ) : visibleDays.length === 0 ? (
+        <Paper withBorder p="xl" radius="md" ta="center">
+          <Text fw={600}>Nenhum dia em {formatMonth(month)}</Text>
+          <Text c="dimmed" size="sm" mt={4}>Adicione a primeira data desse mês para começar.</Text>
+        </Paper>
+      ) : (
+        <>
+          <Paper withBorder radius="md" visibleFrom="sm" style={{ overflow: 'hidden' }}>
+            <Table verticalSpacing="md" horizontalSpacing="lg" highlightOnHover>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th w={46}><Checkbox checked={allVisibleSelected} indeterminate={selectedIds.some((id) => visibleIds.includes(id)) && !allVisibleSelected} onChange={toggleAll} aria-label="Selecionar todas as datas deste mês" /></Table.Th>
+                  <Table.Th>Data</Table.Th><Table.Th>Dia da semana</Table.Th><Table.Th ta="right">Ações</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>{visibleDays.map((dia) => (
+                <Table.Tr key={dia.id}>
+                  <Table.Td><Checkbox checked={selectedIds.includes(dia.id)} onChange={() => setSelectedIds((current) => current.includes(dia.id) ? current.filter((id) => id !== dia.id) : [...current, dia.id])} aria-label={`Selecionar ${formatDate(dia.data)}`} /></Table.Td>
+                  <Table.Td><Text fw={600}>{formatDate(dia.data)}</Text></Table.Td>
+                  <Table.Td><Badge color="ibce" variant="light">{getDayName(dia.data)}</Badge></Table.Td>
+                  <Table.Td ta="right"><Button color="red" variant="subtle" size="xs" leftSection={<IconTrash size={15} />} onClick={() => confirmDelete([dia.id])}>Excluir</Button></Table.Td>
+                </Table.Tr>
+              ))}</Table.Tbody>
+            </Table>
+          </Paper>
+
+          <Stack hiddenFrom="sm" gap="sm">
+            <Checkbox checked={allVisibleSelected} indeterminate={selectedIds.some((id) => visibleIds.includes(id)) && !allVisibleSelected} onChange={toggleAll} label="Selecionar todas deste mês" />
+            {visibleDays.map((dia) => (
+              <Card key={dia.id} withBorder padding="md" radius="md">
+                <Group justify="space-between" wrap="nowrap">
+                  <Group wrap="nowrap">
+                    <Checkbox checked={selectedIds.includes(dia.id)} onChange={() => setSelectedIds((current) => current.includes(dia.id) ? current.filter((id) => id !== dia.id) : [...current, dia.id])} aria-label={`Selecionar ${formatDate(dia.data)}`} />
+                    <div><Text fw={700}>{formatDate(dia.data)}</Text><Text c="dimmed" size="sm">{getDayName(dia.data)}</Text></div>
+                  </Group>
+                  <Button color="red" variant="subtle" px="xs" onClick={() => confirmDelete([dia.id])} aria-label={`Excluir ${formatDate(dia.data)}`}><IconTrash size={18} /></Button>
+                </Group>
+              </Card>
+            ))}
+          </Stack>
+        </>
       )}
 
-      {/* Barra de Pesquisa e Filtros */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6 animate-fade-in">
-        <div className="space-y-4">
-          {/* Barra de Pesquisa */}
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <input
-              type="text"
-              placeholder="Buscar por data ou dia da semana..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+      <Modal opened={addOpened} onClose={() => !saving && setAddOpened(false)} title="Adicionar dias de atuação" centered size="auto">
+        <Stack>
+          <Text size="sm" c="dimmed">Clique em todas as datas desejadas. Clique novamente em uma data para removê-la da seleção.</Text>
+          <Group justify="center">
+            <DatePicker
+              type="multiple"
+              value={selectedDates}
+              onChange={setSelectedDates}
+              minDate={new Date(2020, 0, 1)}
+              excludeDate={(date) => dias.some((dia) => dia.data === date)}
+              defaultDate={`${month}-01`}
+              aria-label="Selecionar vários dias de atuação"
             />
-          </div>
-
-          {/* Filtros */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Filtro por Mês */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Filtrar por Mês
-              </label>
-              <select
-                value={filterMonth}
-                onChange={(e) => setFilterMonth(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-              >
-                <option value="todos">Todos os meses</option>
-                {availableMonths.map((monthKey) => (
-                  <option key={monthKey} value={monthKey}>
-                    {formatMonthLabel(monthKey)}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Filtro de Ordenação */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Ordenar por
-              </label>
-              <select
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as any)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-              >
-                <option value="data-recente">Data (Mais Recente)</option>
-                <option value="data-antiga">Data (Mais Antiga)</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Contador de resultados */}
-          <div className="text-sm text-gray-600 dark:text-gray-400 pt-2 border-t border-gray-200 dark:border-gray-700">
-            Mostrando {filteredAndSortedDias.length} de {diasAtuacao.length} dia(s) de atuação
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden animate-fade-in">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-700">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Data
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Dia da Semana
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Ações
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {filteredAndSortedDias.length === 0 ? (
-              <tr>
-                <td colSpan={3} className="px-6 py-12 text-center">
-                  <div className="flex flex-col items-center">
-                    <svg className="h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">
-                      Nenhum dia de atuação encontrado
-                    </p>
-                    <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">
-                      {diasAtuacao.length === 0 
-                        ? 'Adicione dias de atuação usando o botão acima'
-                        : 'Tente ajustar os filtros de busca'}
-                    </p>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              filteredAndSortedDias.map((dia, index) => {
-                // Parse manual da data para evitar problemas de timezone
-                const [year, month, day] = dia.data.split('-').map(Number)
-                const date = new Date(year, month - 1, day) // month - 1 porque Date usa 0-11
-                const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
-                return (
-                  <tr 
-                    key={dia.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 animate-slide-in"
-                    style={{ animationDelay: `${index * 50}ms` }}
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                      {formatDate(dia.data)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
-                      {dayNames[date.getDay()]}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => handleDelete(dia.id)}
-                        className="text-red-600 hover:text-red-800 transition-all duration-200 hover:underline font-medium"
-                      >
-                        Remover
-                      </button>
-                    </td>
-                  </tr>
-                )
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+          </Group>
+          <Paper withBorder p="sm" bg="var(--app-surface-muted)">
+            <Group justify="space-between">
+              <Text size="sm" fw={600}>{selectedDates.length} {selectedDates.length === 1 ? 'data selecionada' : 'datas selecionadas'}</Text>
+              <Text size="xs" c="dimmed">Datas já cadastradas ficam desabilitadas.</Text>
+            </Group>
+          </Paper>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setAddOpened(false)} disabled={saving}>Cancelar</Button>
+            <Button onClick={addDays} disabled={selectedDates.length === 0} loading={saving}>Salvar {selectedDates.length || ''} {selectedDates.length === 1 ? 'data' : 'datas'}</Button>
+          </Group>
+        </Stack>
+      </Modal>
+    </Stack>
   )
 }
-

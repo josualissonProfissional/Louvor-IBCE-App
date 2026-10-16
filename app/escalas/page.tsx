@@ -3,6 +3,9 @@ import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import EscalaCalendar from '@/components/EscalaCalendar'
+import Link from 'next/link'
+import { Button, Group, Stack, Text, Title } from '@mantine/core'
+import { IconPlus } from '@tabler/icons-react'
 
 export default async function EscalasPage() {
   const user = await getCurrentUser()
@@ -15,6 +18,7 @@ export default async function EscalasPage() {
 
   // Busca dias de atuação do mês atual
   const today = new Date()
+  const initialDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
   const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
   const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
 
@@ -38,27 +42,21 @@ export default async function EscalasPage() {
     .order('data', { ascending: true })
 
   return (
-    <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0 mb-4 md:mb-6 animate-fade-in">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-          Escalas
-        </h1>
+    <Stack gap="lg">
+      <Group justify="space-between" align="flex-start">
+        <div><Title order={1} size="h2">Escalas</Title><Text c="dimmed" mt={4}>Planejamento de repertório e equipes por data.</Text></div>
         {user.lider && (
-          <a
-            href="/escalas/nova"
-            className="bg-primary text-white px-4 py-2 md:px-6 md:py-3 rounded-lg hover:bg-primary-light transition-all duration-300 transform active:scale-95 md:hover:scale-105 hover:shadow-lg font-semibold text-sm md:text-base text-center"
-          >
-            + Nova Escala
-          </a>
+          <Button component={Link} href="/escalas/nova" leftSection={<IconPlus size={18} />}>Nova escala</Button>
         )}
-      </div>
+      </Group>
 
       <EscalaCalendar
         diasAtuacao={diasAtuacao || []}
         escalas={escalas || []}
         isAdmin={user.lider}
+        initialDate={initialDate}
       />
-    </div>
+    </Stack>
   )
 }
 

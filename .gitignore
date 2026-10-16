@@ -25,6 +25,7 @@ yarn-error.log*
 # Local env files
 .env*.local
 .env
+.env*
 
 # Vercel
 .vercel
@@ -33,9 +34,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-
-
-
-
-
-
+# Local agent & MCP configurations (containing local tokens/secrets)
+.agents/
+.codex/
+.mcp.json
+bin/

@@ -1,10 +1,12 @@
 // Página administrativa principal
 import { redirect } from 'next/navigation'
-import { requireAdmin } from '@/lib/auth'
+import { getCurrentUser } from '@/lib/auth'
 import Link from 'next/link'
 
 export default async function AdminPage() {
-  await requireAdmin()
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+  if (!user.lider) redirect('/')
 
   return (
     <div className="container mx-auto px-4 py-8">

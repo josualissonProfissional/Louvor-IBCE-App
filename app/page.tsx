@@ -2,7 +2,7 @@
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
-import DashboardClient from '@/components/DashboardClient'
+import DashboardModern from '@/components/DashboardModern'
 import { Usuario } from '@/types'
 
 export const revalidate = 0 // Desabilita cache para sempre buscar dados atualizados
@@ -17,6 +17,7 @@ export default async function HomePage() {
   const supabase = createServerClient()
   
   const today = new Date()
+  const initialDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
   
   // Busca escalas da semana atual
   const startOfWeek = new Date(today)
@@ -72,11 +73,13 @@ export default async function HomePage() {
   }) || []
 
   return (
-    <DashboardClient
+    <DashboardModern
       escalasIniciais={escalasSemana || []}
       diasAtuacao={diasAtuacao || []}
       escalasMes={escalasMes || []}
       aniversariantes={aniversariantes}
+      initialDate={initialDate}
+      isAdmin={user.lider}
     />
   )
 }

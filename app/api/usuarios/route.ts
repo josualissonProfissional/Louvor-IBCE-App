@@ -11,18 +11,29 @@ export async function GET() {
     await requireAdmin()
     const supabase = createAdminClient()
 
-    const { data, error } = await supabase
-      .from('usuarios')
-      .select(`
-        *,
-        instrumento:instrumentos(*)
-      `)
-      .order('nome', { ascending: true, nullsFirst: false })
-      .order('email', { ascending: true })
+    const [profilesResult, authResult] = await Promise.all([
+      supabase
+        .from('usuarios')
+        .select(`
+          *,
+          instrumento:instrumentos(*)
+        `)
+        .order('nome', { ascending: true, nullsFirst: false })
+        .order('email', { ascending: true }),
+      supabase.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+    ])
 
-    if (error) throw error
+    if (profilesResult.error) throw profilesResult.error
+    if (authResult.error) throw authResult.error
 
-    return NextResponse.json(data)
+    const authById = new Map(authResult.data.users.map((user) => [user.id, user]))
+    const profiles = (profilesResult.data || []) as Array<Record<string, any> & { id: string }>
+    const users = profiles.map((profile) => ({
+      ...profile,
+      last_sign_in_at: authById.get(profile.id)?.last_sign_in_at || null,
+    }))
+
+    return NextResponse.json(users)
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || 'Erro ao buscar usuários' },
