@@ -1,437 +1,185 @@
 'use client'
 
-// Calendário de escalas com edição e remoção
-import { useState, useEffect } from 'react'
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns'
-import ptBR from 'date-fns/locale/pt-BR'
-import { DiaAtuacao } from '@/types'
-import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
+import { format } from 'date-fns'
+import ptBR from 'date-fns/locale/pt-BR'
+import { ActionIcon, Badge, Box, Button, Card, Center, Grid, Group, Paper, Skeleton, Stack, Text, ThemeIcon } from '@mantine/core'
+import { Calendar, DatesProvider } from '@mantine/dates'
+import { modals } from '@mantine/modals'
+import { notifications } from '@mantine/notifications'
+import { IconCalendarEvent, IconMicrophone, IconMusic, IconPlus, IconTrash, IconUsers } from '@tabler/icons-react'
+import 'dayjs/locale/pt-br'
+import { DiaAtuacao } from '@/types'
+import styles from './CalendarBoard.module.css'
 
-interface Escala {
-  id: string
-  data: string
-  musica: { titulo: string } | null
-  usuario: { nome?: string; email: string; instrumento?: { nome: string } }
-  funcao: string
-}
+interface Escala { id: string; data: string; musica: { titulo: string } | null; usuario: { nome?: string; email: string; instrumento?: { nome: string } }; funcao: string }
+const parseDate = (value: string) => { const [y, m, d] = value.split('-').map(Number); return new Date(y, m - 1, d, 12) }
 
-interface EscalaCalendarProps {
-  diasAtuacao: DiaAtuacao[]
-  escalas: Escala[]
-  isAdmin: boolean
-}
+export default function EscalaCalendar({ diasAtuacao, escalas: initial, isAdmin, initialDate }: { diasAtuacao: DiaAtuacao[]; escalas: Escala[]; isAdmin: boolean; initialDate: string }) {
+  const [month, setMonth] = useState(initialDate)
+  const [mounted, setMounted] = useState(false)
+  const [selected, setSelected] = useState<string | null>(null)
+  const [days, setDays] = useState(diasAtuacao)
+  const [items, setItems] = useState(initial)
 
-export default function EscalaCalendar({ diasAtuacao, escalas: initialEscalas, isAdmin }: EscalaCalendarProps) {
-  const [currentDate, setCurrentDate] = useState(new Date())
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [diasAtuacaoCompletos, setDiasAtuacaoCompletos] = useState<DiaAtuacao[]>(diasAtuacao)
-  const [escalas, setEscalas] = useState<Escala[]>(initialEscalas)
+  useEffect(() => setMounted(true), [])
 
-  const monthStart = startOfMonth(currentDate)
-  const monthEnd = endOfMonth(currentDate)
-  const days = eachDayOfInterval({ start: monthStart, end: monthEnd })
-
-  // Carrega dias de atuação quando o mês do calendário muda
   useEffect(() => {
-    async function loadDiasAtuacao() {
-      const monthStart = startOfMonth(currentDate)
-      const monthEnd = endOfMonth(currentDate)
-      
-      try {
-        const response = await fetch(
-          `/api/dias-atuacao?data_inicio=${format(monthStart, 'yyyy-MM-dd')}&data_fim=${format(monthEnd, 'yyyy-MM-dd')}`
-        )
-        if (response.ok) {
-          const novosDias = await response.json()
-          // Verifica se a resposta é um array válido
-          if (Array.isArray(novosDias)) {
-            // Combina com os dias já existentes, evitando duplicatas por ID
-            setDiasAtuacaoCompletos((prev) => {
-              const diasMap = new Map<string, DiaAtuacao>()
-              // Adiciona dias anteriores
-              prev.forEach((dia) => {
-                diasMap.set(dia.id, dia)
-              })
-              // Adiciona novos dias (sobrescreve se já existir)
-              novosDias.forEach((novoDia: DiaAtuacao) => {
-                if (novoDia && novoDia.id) {
-                  diasMap.set(novoDia.id, novoDia)
-                }
-              })
-              return Array.from(diasMap.values())
-            })
-          }
-        }
-      } catch (error) {
-        console.error('Erro ao carregar dias de atuação:', error)
-      }
-    }
+    if (!mounted) return
+    const monthDate = parseDate(month)
+    const start = format(new Date(monthDate.getFullYear(), monthDate.getMonth(), 1), 'yyyy-MM-dd')
+    const end = format(new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0), 'yyyy-MM-dd')
+    Promise.all([fetch(`/api/dias-atuacao?data_inicio=${start}&data_fim=${end}`), fetch(`/api/escalas/public?data_inicio=${start}&data_fim=${end}`)])
+      .then(async ([d, e]) => { if (d.ok) setDays(await d.json()); if (e.ok) setItems(await e.json()) })
+      .catch((error) => console.error('Erro ao carregar escalas:', error))
+  }, [month, mounted])
 
-    loadDiasAtuacao()
-  }, [currentDate])
+  const isActing = (date: string) => days.some((day) => day.data === date)
+  const onDate = (date: string) => items.filter((item) => item.data === date)
+  const selectedItems = selected ? onDate(selected) : []
+  const songs = selectedItems.filter((item) => item.musica)
+  const singers = selectedItems.filter((item) => !item.musica && item.funcao === 'cantor')
+  const musicians = selectedItems.filter((item) => !item.musica && item.funcao === 'musico')
+  const songsByTitle = songs.reduce<Record<string, Escala[]>>((groups, item) => {
+    const title = item.musica!.titulo
+    ;(groups[title] ||= []).push(item)
+    return groups
+  }, {})
 
-  // Carrega escalas quando o mês do calendário muda
-  useEffect(() => {
-    async function loadEscalas() {
-      const monthStart = startOfMonth(currentDate)
-      const monthEnd = endOfMonth(currentDate)
-      
-      try {
-        const response = await fetch(
-          `/api/escalas/public?data_inicio=${format(monthStart, 'yyyy-MM-dd')}&data_fim=${format(monthEnd, 'yyyy-MM-dd')}`
-        )
-        if (response.ok) {
-          const novasEscalas = await response.json()
-          // Verifica se a resposta é um array válido
-          if (Array.isArray(novasEscalas)) {
-            setEscalas(novasEscalas)
-          }
-        }
-      } catch (error) {
-        console.error('Erro ao carregar escalas:', error)
-      }
-    }
+  const remove = (item: Escala) => modals.openConfirmModal({
+    title: 'Remover integrante da escala?',
+    children: <Text size="sm">Esta ação removerá {item.usuario.nome || item.usuario.email} desta escala.</Text>,
+    labels: { confirm: 'Remover', cancel: 'Cancelar' }, confirmProps: { color: 'red' },
+    onConfirm: async () => {
+      const response = await fetch(`/api/escalas/${item.id}`, { method: 'DELETE' })
+      if (response.ok) { setItems((current) => current.filter((entry) => entry.id !== item.id)); notifications.show({ color: 'ibce', message: 'Integrante removido da escala.' }) }
+      else notifications.show({ color: 'red', message: 'Não foi possível remover a escala.' })
+    },
+  })
 
-    loadEscalas()
-  }, [currentDate])
+  const renderDay = (value: string) => {
+    const acting = isActing(value)
+    const count = onDate(value).length
+    const isSelected = selected === value
 
-  const isDiaAtuacao = (date: Date) => {
-    return diasAtuacaoCompletos.some((dia) => {
-      // Parse seguro da data para evitar problemas de timezone
-      const [year, month, day] = dia.data.split('-').map(Number)
-      const diaDate = new Date(year, month - 1, day, 12, 0, 0)
-      return isSameDay(diaDate, date)
-    })
+    return (
+      <Stack gap={2} align="stretch" w="100%">
+        <Group justify="space-between" align="center" wrap="nowrap">
+          <Text size="sm" fw={acting ? 700 : 500} c={isSelected ? 'white' : acting ? 'ibce.9' : undefined}>
+            {Number(value.slice(8, 10))}
+          </Text>
+          {acting && (
+            <Badge
+              size="xs"
+              variant={isSelected ? 'white' : 'filled'}
+              color="ibce"
+              radius="xs"
+              px={4}
+              h={{ base: 14, sm: 16 }}
+              fz={{ base: 8, sm: 9 }}
+              fw={700}
+            >
+              Culto
+            </Badge>
+          )}
+        </Group>
+        {count > 0 && (
+          <Text fz={{ base: 7, sm: 9 }} c={isSelected ? 'white' : 'olive.7'} fw={700} lh={1} mt={1}>
+            Escala ({count})
+          </Text>
+        )}
+      </Stack>
+    )
   }
 
-  const getEscalasDoDia = (date: Date) => {
-    return escalas.filter((escala) => {
-      // Parse seguro da data para evitar problemas de timezone
-      const [year, month, day] = escala.data.split('-').map(Number)
-      const escalaDate = new Date(year, month - 1, day, 12, 0, 0)
-      return isSameDay(escalaDate, date)
-    })
+  const personRow = (item: Escala) => <Group key={item.id} justify="space-between" wrap="nowrap"><Box miw={0}><Text size="sm" fw={600} truncate>{item.usuario.nome || item.usuario.email}</Text>{item.usuario.instrumento && <Text size="xs" c="dimmed">{item.usuario.instrumento.nome}</Text>}</Box>{isAdmin && <ActionIcon color="red" variant="subtle" aria-label="Remover da escala" onClick={() => remove(item)}><IconTrash size={17} /></ActionIcon>}</Group>
+
+  if (!mounted) {
+    return (
+      <Grid gutter="lg" align="flex-start" aria-label="Carregando calendário de escalas">
+        <Grid.Col span={{ base: 12, xl: 8 }}><Card withBorder padding="lg" bg="var(--app-surface)"><Skeleton h={510} radius="sm" /></Card></Grid.Col>
+        <Grid.Col span={{ base: 12, xl: 4 }}><Card withBorder padding="lg" bg="var(--app-surface)"><Stack gap="md"><Skeleton h={24} w="58%" /><Skeleton h={14} w="76%" /><Skeleton h={180} mt="md" /></Stack></Card></Grid.Col>
+      </Grid>
+    )
   }
-
-  const agruparEscalas = (escalasDia: Escala[]) => {
-    const escalasComMusica: { [key: string]: Escala[] } = {}
-    const escalasGerais: { cantores: Escala[]; musicos: Escala[] } = {
-      cantores: [],
-      musicos: [],
-    }
-
-    escalasDia.forEach((escala) => {
-      if (escala.musica) {
-        // Escala com música
-        const musicaTitulo = escala.musica.titulo
-        if (!escalasComMusica[musicaTitulo]) {
-          escalasComMusica[musicaTitulo] = []
-        }
-        escalasComMusica[musicaTitulo].push(escala)
-      } else {
-        // Escala geral (sem música)
-        if (escala.funcao === 'cantor') {
-          escalasGerais.cantores.push(escala)
-        } else if (escala.funcao === 'musico') {
-          escalasGerais.musicos.push(escala)
-        }
-      }
-    })
-
-    return { escalasComMusica, escalasGerais }
-  }
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja remover esta escala?')) return
-
-    try {
-      const response = await fetch(`/api/escalas/${id}`, {
-        method: 'DELETE',
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error)
-      }
-
-      // Recarrega a página para atualizar as escalas
-      window.location.reload()
-    } catch (error: any) {
-      alert('Erro ao remover escala: ' + error.message)
-    }
-  }
-
-  const previousMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))
-  }
-
-  const nextMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))
-  }
-
-  const selectedEscalas = selectedDate ? getEscalasDoDia(selectedDate) : []
-  const { escalasComMusica, escalasGerais } = agruparEscalas(selectedEscalas)
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-      <div className="lg:col-span-2 animate-fade-in" style={{ animationDelay: '100ms' }}>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-3 md:p-6 transition-all duration-300 hover:shadow-xl">
-          <div className="flex items-center justify-between mb-3 md:mb-4">
-            <button
-              onClick={previousMonth}
-              className="px-3 py-1.5 md:px-4 md:py-2 bg-primary text-white rounded-lg hover:bg-primary-light active:scale-95 md:hover:scale-110 transition-all duration-200 font-semibold text-sm md:text-base"
-            >
-              ←
-            </button>
-            <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white capitalize px-2 text-center">
-              {format(currentDate, 'MMMM yyyy', { locale: ptBR })}
-            </h3>
-            <button
-              onClick={nextMonth}
-              className="px-3 py-1.5 md:px-4 md:py-2 bg-primary text-white rounded-lg hover:bg-primary-light active:scale-95 md:hover:scale-110 transition-all duration-200 font-semibold text-sm md:text-base"
-            >
-              →
-            </button>
-          </div>
-
-          <div className="grid grid-cols-7 gap-1 md:gap-2">
-            {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day) => (
-              <div
-                key={day}
-                className="text-center text-xs md:text-sm font-semibold text-gray-600 dark:text-gray-400 py-1 md:py-2"
-              >
-                <span className="hidden sm:inline">{day}</span>
-                <span className="sm:hidden">{day.charAt(0)}</span>
-              </div>
-            ))}
-
-            {/* Células vazias para alinhar o primeiro dia do mês com o dia da semana correto */}
-            {Array.from({ length: monthStart.getDay() }).map((_, index) => (
-              <div key={`empty-${index}`} className="min-h-[60px] md:min-h-[80px] lg:min-h-[90px] p-1 md:p-2" />
-            ))}
-
-            {days.map((day, index) => {
-              const isAtuacao = isDiaAtuacao(day)
-              const escalasDia = getEscalasDoDia(day)
-              const isToday = isSameDay(day, new Date())
-              const isSelected = selectedDate && isSameDay(day, selectedDate)
-
-              return (
-                <button
-                  key={day.toISOString()}
-                  onClick={() => isAtuacao && setSelectedDate(day)}
-                  disabled={!isAtuacao}
-                  className={`
-                    min-h-[60px] md:min-h-[80px] lg:min-h-[90px] p-1 md:p-2 border-2 rounded-lg text-left transition-all duration-300
-                    animate-slide-in-up
-                    ${isToday 
-                      ? 'bg-yellow-200 dark:bg-yellow-800 border-yellow-400 dark:border-yellow-600 ring-2 ring-yellow-400 dark:ring-yellow-600 shadow-md' 
-                      : isAtuacao 
-                        ? 'bg-green-100 dark:bg-green-900 border-green-500 dark:border-green-600 cursor-pointer hover:bg-green-200 dark:hover:bg-green-800 active:scale-95 md:hover:shadow-lg md:hover:scale-105 md:hover:-translate-y-1 transition-all duration-300' 
-                        : 'bg-gray-100 dark:bg-gray-700 opacity-50 cursor-not-allowed border-gray-300 dark:border-gray-600'}
-                    ${isSelected && !isToday ? 'ring-2 md:ring-4 ring-blue-500 dark:ring-blue-400 shadow-lg md:shadow-xl md:scale-105' : ''}
-                    ${isSelected && isToday ? 'ring-2 md:ring-4 ring-blue-500 dark:ring-blue-400 shadow-lg md:shadow-xl md:scale-105' : ''}
-                  `}
-                  style={{ animationDelay: `${index * 20}ms` }}
-                >
-                  <div className={`text-xs md:text-sm font-semibold ${isToday ? 'text-yellow-900 dark:text-yellow-100 font-bold' : 'text-gray-700 dark:text-gray-300'}`}>
-                    {format(day, 'd')}
-                    {isToday && (
-                      <span className="ml-0.5 md:ml-1 text-[10px] md:text-xs bg-yellow-400 dark:bg-yellow-600 px-1 md:px-1.5 py-0.5 rounded">Hoje</span>
-                    )}
-                  </div>
-                  {escalasDia.length > 0 && (
-                    <div className={`text-[10px] md:text-xs mt-1 md:mt-2 font-medium ${isToday ? 'text-yellow-800 dark:text-yellow-200' : 'text-gray-600 dark:text-gray-400'}`}>
-                      <span className="inline-flex items-center gap-0.5 md:gap-1 bg-green-500 dark:bg-green-600 text-white px-1 md:px-2 py-0.5 rounded-full text-[10px] md:text-xs">
-                        {escalasDia.length}
-                        <span className="hidden sm:inline"> escala{escalasDia.length > 1 ? 's' : ''}</span>
-                      </span>
-                    </div>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Detalhes do dia selecionado */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 md:p-6 transition-all duration-300 hover:shadow-xl animate-fade-in mt-4 lg:mt-0" style={{ animationDelay: '200ms' }}>
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0 mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white capitalize">
-            {selectedDate
-              ? format(selectedDate, "dd 'de' MMMM", { locale: ptBR })
-              : 'Selecione um dia'}
-          </h3>
-          {isAdmin && selectedDate && (
-            <Link
-              href={`/escalas/nova?data=${selectedDate.toISOString().split('T')[0]}`}
-              className="text-xs md:text-sm text-primary hover:text-primary-light hover:underline font-medium transition-all duration-200 inline-flex items-center gap-1 self-start sm:self-auto"
-            >
-              <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              <span className="hidden sm:inline">Adicionar</span>
-              <span className="sm:hidden">+</span>
-            </Link>
+    <Grid gutter="lg" align="flex-start">
+      <Grid.Col span={{ base: 12, xl: 8 }}>
+        <Card withBorder padding="lg" bg="var(--app-surface)">
+          <DatesProvider settings={{ locale: 'pt-br', firstDayOfWeek: 0, weekendDays: [0, 6] }}>
+            <Calendar
+              date={month}
+              onDateChange={setMonth}
+              renderDay={renderDay}
+              highlightToday
+              getDayProps={(value) => {
+                const active = isActing(value)
+                return {
+                  'aria-disabled': !active,
+                  selected: selected === value,
+                  'data-culto': active ? 'true' : undefined,
+                  className: active ? styles.dayCulto : styles.dayDisabled,
+                  onClick: () => active && setSelected(value)
+                }
+              }}
+              className={styles.calendar}
+              classNames={{ calendarHeader: styles.header, month: styles.month, monthCell: styles.cell, day: styles.day }}
+              ariaLabels={{ nextMonth: 'Próximo mês', previousMonth: 'Mês anterior', monthLevelControl: 'Selecionar mês' }}
+            />
+          </DatesProvider>
+        </Card>
+      </Grid.Col>
+      <Grid.Col span={{ base: 12, xl: 4 }}>
+        <Card withBorder padding="lg" bg="var(--app-surface)">
+          <Group justify="space-between" mb="lg">
+            <Box>
+              <Text fw={700} size="lg">{selected ? format(parseDate(selected), "dd 'de' MMMM", { locale: ptBR }) : 'Detalhes da escala'}</Text>
+              <Text size="sm" c="dimmed">{selected ? 'Equipe e repertório do dia' : 'Selecione uma data de culto'}</Text>
+            </Box>
+            {isAdmin && selected && <Button component={Link} href={`/escalas/nova?data=${selected}`} size="xs" leftSection={<IconPlus size={15} />}>Adicionar</Button>}
+          </Group>
+          {!selected ? (
+            <Center py={50}>
+              <Stack align="center">
+                <ThemeIcon color="gray" variant="light" size={52}><IconCalendarEvent size={26} /></ThemeIcon>
+                <Text c="dimmed" size="sm">Escolha um dia no calendário</Text>
+              </Stack>
+            </Center>
+          ) : !selectedItems.length ? (
+            <Center py={50}><Text c="dimmed">Nenhuma escala nesta data.</Text></Center>
+          ) : (
+            <Stack gap="lg">
+              {songs.length > 0 && (
+                <Box>
+                  <Group gap="xs" mb="sm"><IconMusic size={18} /><Text fw={700}>Repertório</Text></Group>
+                  <Stack gap="xs">
+                    {Object.entries(songsByTitle).map(([title, group]) => (
+                      <Paper key={title} withBorder p="sm" bg="var(--app-surface-muted)">
+                        <Text fw={600} size="sm">{title}</Text>
+                        {group.map(personRow)}
+                      </Paper>
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+              {singers.length > 0 && (
+                <Box>
+                  <Group gap="xs" mb="sm"><IconMicrophone size={18} /><Text fw={700}>Cantores</Text></Group>
+                  <Stack>{singers.map(personRow)}</Stack>
+                </Box>
+              )}
+              {musicians.length > 0 && (
+                <Box>
+                  <Group gap="xs" mb="sm"><IconUsers size={18} /><Text fw={700}>Músicos</Text></Group>
+                  <Stack>{musicians.map(personRow)}</Stack>
+                </Box>
+              )}
+            </Stack>
           )}
-        </div>
-        {selectedEscalas.length > 0 ? (
-          <div className="space-y-3 md:space-y-4 max-h-[70vh] md:max-h-none overflow-y-auto">
-            {/* Escalas com Músicas */}
-            {Object.entries(escalasComMusica).map(([musica, escalasMusica], index) => (
-              <div 
-                key={musica} 
-                className="border-l-4 border-primary pl-3 md:pl-4 py-2 md:py-3 rounded-r-lg bg-primary/5 dark:bg-primary/10 hover:bg-primary/10 dark:hover:bg-primary/20 transition-all duration-300 animate-slide-in-up"
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                <div className="font-semibold text-gray-900 dark:text-white mb-2 text-sm md:text-base break-words">
-                  {musica}
-                </div>
-                <div className="space-y-1.5 md:space-y-2">
-                  {escalasMusica.map((escala, escalaIndex) => (
-                    <div
-                      key={escala.id}
-                      className="flex justify-between items-start text-xs md:text-sm text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 p-1.5 md:p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 group"
-                      style={{ animationDelay: `${(index * 50) + (escalaIndex * 30)}ms` }}
-                    >
-                      <div className="flex-1 min-w-0 pr-2">
-                        <span className="font-medium text-primary dark:text-primary-light">
-                          {escala.funcao === 'solo' ? 'Solo' : escala.funcao.charAt(0).toUpperCase() + escala.funcao.slice(1)}:
-                        </span>{' '}
-                        <span className="text-gray-900 dark:text-white break-words">
-                          {escala.usuario.nome || escala.usuario.email}
-                        </span>
-                        {escala.usuario.instrumento && (
-                          <span className="text-gray-500 dark:text-gray-400 text-[10px] md:text-xs ml-1 block sm:inline">
-                            ({escala.usuario.instrumento.nome})
-                          </span>
-                        )}
-                      </div>
-                      {isAdmin && (
-                        <button
-                          onClick={() => handleDelete(escala.id)}
-                          className="text-red-500 hover:text-red-700 dark:hover:text-red-400 ml-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded flex-shrink-0"
-                          title="Remover escala"
-                        >
-                          <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-
-            {/* Escala Geral */}
-            {(escalasGerais.cantores.length > 0 || escalasGerais.musicos.length > 0) && (
-              <div className="border-l-4 border-blue-500 pl-3 md:pl-4 py-2 md:py-3 rounded-r-lg bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all duration-300 mt-3 md:mt-4 animate-slide-in-up">
-                <div className="font-semibold text-gray-900 dark:text-white mb-2 md:mb-3 text-sm md:text-base">
-                  Escala Geral
-                </div>
-                <div className="space-y-2 md:space-y-3">
-                  {/* Cantores */}
-                  {escalasGerais.cantores.length > 0 && (
-                    <div>
-                      <div className="text-[10px] md:text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 md:mb-2 uppercase tracking-wide">
-                        Cantores:
-                      </div>
-                      <div className="space-y-1 md:space-y-1.5">
-                        {escalasGerais.cantores.map((escala, index) => (
-                          <div
-                            key={escala.id}
-                            className="flex justify-between items-start text-xs md:text-sm text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 p-1.5 md:p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 group"
-                            style={{ animationDelay: `${index * 30}ms` }}
-                          >
-                            <div className="text-gray-900 dark:text-white min-w-0 pr-2 break-words">
-                              {escala.usuario.nome || escala.usuario.email}
-                              {escala.usuario.instrumento && (
-                                <span className="text-gray-500 dark:text-gray-400 text-[10px] md:text-xs ml-1 block sm:inline">
-                                  ({escala.usuario.instrumento.nome})
-                                </span>
-                              )}
-                            </div>
-                            {isAdmin && (
-                              <button
-                                onClick={() => handleDelete(escala.id)}
-                                className="text-red-500 hover:text-red-700 dark:hover:text-red-400 ml-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded flex-shrink-0"
-                                title="Remover escala"
-                              >
-                                <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Músicos */}
-                  {escalasGerais.musicos.length > 0 && (
-                    <div>
-                      <div className="text-[10px] md:text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 md:mb-2 uppercase tracking-wide">
-                        Músicos:
-                      </div>
-                      <div className="space-y-1 md:space-y-1.5">
-                        {escalasGerais.musicos.map((escala, index) => (
-                          <div
-                            key={escala.id}
-                            className="flex justify-between items-start text-xs md:text-sm text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 p-1.5 md:p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 group"
-                            style={{ animationDelay: `${(escalasGerais.cantores.length * 30) + (index * 30)}ms` }}
-                          >
-                            <div className="text-gray-900 dark:text-white min-w-0 pr-2 break-words">
-                              {escala.usuario.nome || escala.usuario.email}
-                              {escala.usuario.instrumento && (
-                                <span className="text-gray-500 dark:text-gray-400 text-[10px] md:text-xs ml-1 block sm:inline">
-                                  ({escala.usuario.instrumento.nome})
-                                </span>
-                              )}
-                            </div>
-                            {isAdmin && (
-                              <button
-                                onClick={() => handleDelete(escala.id)}
-                                className="text-red-500 hover:text-red-700 dark:hover:text-red-400 ml-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded flex-shrink-0"
-                                title="Remover escala"
-                              >
-                                <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        ) : selectedDate ? (
-          <div className="text-center py-8">
-            <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            <p className="text-gray-500 dark:text-gray-400">
-              Nenhuma escala cadastrada para este dia.
-            </p>
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <p className="text-gray-500 dark:text-gray-400">
-              Clique em um dia de atuação para ver as escalas.
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
+        </Card>
+      </Grid.Col>
+    </Grid>
   )
 }

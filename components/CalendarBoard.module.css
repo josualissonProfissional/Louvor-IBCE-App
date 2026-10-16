@@ -1,0 +1,137 @@
+.calendar,
+.header,
+.month {
+  width: 100%;
+  max-width: none;
+}
+
+.header {
+  margin-bottom: var(--mantine-spacing-md);
+}
+
+.month {
+  table-layout: fixed;
+}
+
+.cell {
+  padding: 4px;
+}
+
+.day {
+  width: 100%;
+  height: 84px;
+  padding: 8px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--mantine-radius-sm);
+  background: var(--app-surface);
+  transition: all 0.15s ease;
+}
+
+.day:hover {
+  background: var(--mantine-color-ibce-light);
+}
+
+/* Dias normais (sem culto) desabilitados */
+.dayDisabled,
+.day[aria-disabled='true']:not(.dayCulto):not(.dayUnavailable):not(.dayAvailable) {
+  cursor: default;
+  opacity: 0.5;
+  background: var(--app-surface);
+  border-color: var(--app-border);
+}
+
+/* Dias de Culto / Atuação com destaque e cor diferenciada */
+.dayCulto,
+.day[data-culto='true'] {
+  cursor: pointer !important;
+  opacity: 1 !important;
+  background-color: var(--mantine-color-ibce-0) !important;
+  border: 1.5px solid var(--mantine-color-ibce-3) !important;
+  box-shadow: 0 1px 3px rgba(40, 89, 87, 0.08);
+}
+
+.dayCulto:hover,
+.day[data-culto='true']:hover {
+  background-color: var(--mantine-color-ibce-1) !important;
+  border-color: var(--mantine-color-ibce-5) !important;
+  box-shadow: 0 2px 6px rgba(40, 89, 87, 0.16);
+}
+
+/* Modo escuro para os cards de Culto */
+:root[data-mantine-color-scheme='dark'] .dayCulto,
+:root[data-mantine-color-scheme='dark'] .day[data-culto='true'] {
+  background-color: rgba(40, 89, 87, 0.28) !important;
+  border: 1.5px solid rgba(98, 167, 163, 0.45) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+:root[data-mantine-color-scheme='dark'] .dayCulto:hover,
+:root[data-mantine-color-scheme='dark'] .day[data-culto='true']:hover {
+  background-color: rgba(40, 89, 87, 0.45) !important;
+  border-color: var(--mantine-color-ibce-5) !important;
+}
+
+/* Dias com status Indisponível em /disponibilidade */
+.dayUnavailable,
+.day[data-status='indisponivel'] {
+  cursor: pointer !important;
+  opacity: 1 !important;
+  background-color: var(--mantine-color-red-0) !important;
+  border: 1.5px solid var(--mantine-color-red-4) !important;
+  box-shadow: 0 1px 4px rgba(220, 38, 38, 0.08);
+}
+
+.dayUnavailable:hover,
+.day[data-status='indisponivel']:hover {
+  background-color: var(--mantine-color-red-1) !important;
+  border-color: var(--mantine-color-red-6) !important;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.16);
+}
+
+:root[data-mantine-color-scheme='dark'] .dayUnavailable,
+:root[data-mantine-color-scheme='dark'] .day[data-status='indisponivel'] {
+  background-color: rgba(220, 38, 38, 0.22) !important;
+  border: 1.5px solid rgba(248, 113, 113, 0.45) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+:root[data-mantine-color-scheme='dark'] .dayUnavailable:hover,
+:root[data-mantine-color-scheme='dark'] .day[data-status='indisponivel']:hover {
+  background-color: rgba(220, 38, 38, 0.38) !important;
+  border-color: var(--mantine-color-red-5) !important;
+}
+
+/* Dias com status Disponível em /disponibilidade */
+.dayAvailable,
+.day[data-status='disponivel'] {
+  cursor: pointer !important;
+  opacity: 1 !important;
+  background-color: var(--mantine-primary-color-filled) !important;
+  border-color: var(--mantine-primary-color-filled) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(40, 89, 87, 0.25) !important;
+}
+
+.dayAvailable:hover,
+.day[data-status='disponivel']:hover {
+  background-color: var(--mantine-color-ibce-8) !important;
+  border-color: var(--mantine-color-ibce-8) !important;
+}
+
+/* Dia selecionado tem prioridade máxima */
+.day[data-selected],
+.dayCulto[data-selected],
+.dayAvailable[data-selected],
+.day[data-selected]:hover,
+.dayCulto[data-selected]:hover,
+.dayAvailable[data-selected]:hover {
+  background-color: var(--mantine-primary-color-filled) !important;
+  border-color: var(--mantine-primary-color-filled) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(40, 89, 87, 0.35) !important;
+}
+
+@media (max-width: 48em) {
+  .cell { padding: 2px; }
+  .day { height: 68px; padding: 4px; }
+}

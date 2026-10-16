@@ -1,539 +1,234 @@
 'use client'
 
-// Página de gerenciamento de usuários
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Usuario, Instrumento } from '@/types'
-import { formatDate } from '@/lib/utils'
+import {
+  Alert, Avatar, Badge, Button, Card, Group, Modal, Paper, PasswordInput,
+  Select, SimpleGrid, Skeleton, Stack, Switch, Table, Text, TextInput, Title,
+} from '@mantine/core'
+import { modals } from '@mantine/modals'
+import { notifications } from '@mantine/notifications'
+import {
+  IconAlertCircle, IconArrowLeft, IconCheck, IconEdit, IconPlus,
+  IconSearch, IconTrash, IconUser,
+} from '@tabler/icons-react'
+import { Instrumento, Usuario } from '@/types'
+import { createClient } from '@/lib/supabase/client'
 
-export default function UsuariosPage() {
-  const router = useRouter()
-  const [usuarios, setUsuarios] = useState<Usuario[]>([])
-  const [instrumentos, setInstrumentos] = useState<Instrumento[]>([])
-  const [loading, setLoading] = useState(true)
-  const [showModal, setShowModal] = useState(false)
-  const [editingUser, setEditingUser] = useState<Usuario | null>(null)
-  const [formData, setFormData] = useState({
-    nome: '',
-    email: '',
-    senha: '',
-    data_nascimento: '',
-    cargo: 'ambos' as 'cantor' | 'musico' | 'ambos',
-    lider: false,
-    instrumento_id: '',
-  })
-  
-  // Estados para busca e filtros
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filterCargo, setFilterCargo] = useState<string>('todos')
-  const [filterInstrumento, setFilterInstrumento] = useState<string>('todos')
-  const [filterAdmin, setFilterAdmin] = useState<string>('todos')
-
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  const loadData = async () => {
-    try {
-      const [usuariosRes, instrumentosRes] = await Promise.all([
-        fetch('/api/usuarios'),
-        fetch('/api/instrumentos'),
-      ])
-
-      if (usuariosRes.ok) {
-        const usuariosData = await usuariosRes.json()
-        setUsuarios(usuariosData)
-      }
-
-      if (instrumentosRes.ok) {
-        const instrumentosData = await instrumentosRes.json()
-        setInstrumentos(instrumentosData)
-      }
-    } catch (error) {
-      console.error('Erro ao carregar dados:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-
-    try {
-      const url = editingUser ? `/api/usuarios/${editingUser.id}` : '/api/usuarios'
-      const method = editingUser ? 'PUT' : 'POST'
-
-      const body: any = {
-        nome: formData.nome || null,
-        email: formData.email,
-        data_nascimento: formData.data_nascimento,
-        cargo: formData.cargo,
-        lider: formData.lider,
-        instrumento_id: formData.instrumento_id || null,
-      }
-
-      // Só envia senha se foi preenchida
-      if (formData.senha && formData.senha.trim() !== '') {
-        body.senha = formData.senha
-      }
-
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error)
-      }
-
-      setShowModal(false)
-      setEditingUser(null)
-      resetForm()
-      loadData()
-    } catch (error: any) {
-      alert('Erro ao salvar usuário: ' + error.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleEdit = (usuario: Usuario) => {
-    setEditingUser(usuario)
-    setFormData({
-      nome: (usuario as any).nome || '',
-      email: usuario.email,
-      senha: '',
-      data_nascimento: usuario.data_nascimento,
-      cargo: usuario.cargo,
-      lider: usuario.lider,
-      instrumento_id: usuario.instrumento_id || '',
-    })
-    setShowModal(true)
-  }
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja remover este usuário?')) return
-
-    try {
-      const response = await fetch(`/api/usuarios/${id}`, {
-        method: 'DELETE',
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error)
-      }
-
-      loadData()
-    } catch (error: any) {
-      alert('Erro ao remover usuário: ' + error.message)
-    }
-  }
-
-  const resetForm = () => {
-    setFormData({
-      nome: '',
-      email: '',
-      senha: '',
-      data_nascimento: '',
-      cargo: 'ambos',
-      lider: false,
-      instrumento_id: '',
-    })
-  }
-
-  const openNewModal = () => {
-    setEditingUser(null)
-    resetForm()
-    setShowModal(true)
-  }
-
-  // Função para filtrar usuários
-  const filteredUsuarios = usuarios.filter((usuario) => {
-    const nome = ((usuario as any).nome || '').toLowerCase()
-    const email = usuario.email.toLowerCase()
-    const searchLower = searchTerm.toLowerCase()
-    
-    // Filtro de busca (nome ou email)
-    const matchesSearch = searchTerm === '' || 
-      nome.includes(searchLower) || 
-      email.includes(searchLower)
-    
-    // Filtro de cargo
-    const matchesCargo = filterCargo === 'todos' || usuario.cargo === filterCargo
-    
-    // Filtro de instrumento
-    const matchesInstrumento = filterInstrumento === 'todos' || 
-      (usuario.instrumento_id && usuario.instrumento_id === filterInstrumento) ||
-      (!usuario.instrumento_id && filterInstrumento === 'sem')
-    
-    // Filtro de admin
-    const matchesAdmin = filterAdmin === 'todos' || 
-      (filterAdmin === 'sim' && usuario.lider) ||
-      (filterAdmin === 'nao' && !usuario.lider)
-    
-    return matchesSearch && matchesCargo && matchesInstrumento && matchesAdmin
-  })
-
-  if (loading && usuarios.length === 0) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <p className="text-gray-600 dark:text-gray-400">Carregando...</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <Link
-            href="/admin"
-            className="text-primary hover:underline mb-2 inline-block transition-all duration-200 hover:translate-x-1"
-          >
-            ← Voltar
-          </Link>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Gerenciar Usuários
-          </h1>
-        </div>
-        <button
-          onClick={openNewModal}
-          className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-light transition-all duration-300 transform hover:scale-105 hover:shadow-lg font-semibold"
-        >
-          + Novo Usuário
-        </button>
-      </div>
-
-      {/* Barra de Pesquisa e Filtros */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6 animate-fade-in">
-        <div className="space-y-4">
-          {/* Barra de Pesquisa */}
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <input
-              type="text"
-              placeholder="Buscar por nome ou email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-            />
-          </div>
-
-          {/* Filtros */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Filtro de Cargo */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Cargo
-              </label>
-              <select
-                value={filterCargo}
-                onChange={(e) => setFilterCargo(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-              >
-                <option value="todos">Todos</option>
-                <option value="cantor">Cantor</option>
-                <option value="musico">Músico</option>
-                <option value="ambos">Ambos</option>
-              </select>
-            </div>
-
-            {/* Filtro de Instrumento */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Instrumento
-              </label>
-              <select
-                value={filterInstrumento}
-                onChange={(e) => setFilterInstrumento(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-              >
-                <option value="todos">Todos</option>
-                <option value="sem">Sem instrumento</option>
-                {instrumentos.map((inst) => (
-                  <option key={inst.id} value={inst.id}>
-                    {inst.nome}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Filtro de Admin */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Administrador
-              </label>
-              <select
-                value={filterAdmin}
-                onChange={(e) => setFilterAdmin(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-              >
-                <option value="todos">Todos</option>
-                <option value="sim">Sim</option>
-                <option value="nao">Não</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Contador de resultados */}
-          <div className="text-sm text-gray-600 dark:text-gray-400 pt-2 border-t border-gray-200 dark:border-gray-700">
-            Mostrando {filteredUsuarios.length} de {usuarios.length} usuário(s)
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden animate-fade-in">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-700">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Nome
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Email
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Cargo
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Instrumento
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Data Nascimento
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Admin
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Ações
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {filteredUsuarios.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-6 py-12 text-center">
-                  <div className="flex flex-col items-center">
-                    <svg className="h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">
-                      Nenhum usuário encontrado
-                    </p>
-                    <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">
-                      Tente ajustar os filtros de busca
-                    </p>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              filteredUsuarios.map((usuario, index) => (
-              <tr 
-                key={usuario.id}
-                className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 animate-slide-in"
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                  {(usuario as any).nome || '-'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
-                  {usuario.email}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
-                  {usuario.cargo}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
-                  {(usuario as any).instrumento?.nome || '-'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
-                  {formatDate(usuario.data_nascimento)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  {usuario.lider ? (
-                    <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded">
-                      Sim
-                    </span>
-                  ) : (
-                    <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded">
-                      Não
-                    </span>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button
-                    onClick={() => handleEdit(usuario)}
-                    className="text-primary hover:text-primary-light mr-4 transition-all duration-200 hover:underline font-medium"
-                  >
-                    Editar
-                  </button>
-                  <button
-                    onClick={() => handleDelete(usuario.id)}
-                    className="text-red-600 hover:text-red-800 transition-all duration-200 hover:underline font-medium"
-                  >
-                    Remover
-                  </button>
-                </td>
-              </tr>
-            ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
-            <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
-              {editingUser ? 'Editar Usuário' : 'Novo Usuário'}
-            </h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Nome Completo
-                </label>
-                <input
-                  type="text"
-                  value={formData.nome}
-                  onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="Ex: João Silva"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
-              </div>
-
-              {!editingUser && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Senha
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={formData.senha}
-                    onChange={(e) => setFormData({ ...formData, senha: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
-                </div>
-              )}
-              {editingUser && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Nova Senha (deixe em branco para manter a atual)
-                  </label>
-                  <input
-                    type="password"
-                    value={formData.senha}
-                    onChange={(e) => setFormData({ ...formData, senha: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Data de Nascimento
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={formData.data_nascimento}
-                  onChange={(e) => setFormData({ ...formData, data_nascimento: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Cargo
-                </label>
-                <select
-                  value={formData.cargo}
-                  onChange={(e) => setFormData({ ...formData, cargo: e.target.value as any })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                >
-                  <option value="cantor">Cantor</option>
-                  <option value="musico">Músico</option>
-                  <option value="ambos">Ambos</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Instrumento
-                </label>
-                <select
-                  value={formData.instrumento_id}
-                  onChange={(e) => setFormData({ ...formData, instrumento_id: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                >
-                  <option value="">Nenhum</option>
-                  {instrumentos.map((inst) => (
-                    <option key={inst.id} value={inst.id}>
-                      {inst.nome}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="lider"
-                  checked={formData.lider}
-                  onChange={(e) => setFormData({ ...formData, lider: e.target.checked })}
-                  className="mr-2"
-                />
-                <label htmlFor="lider" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Administrador/Líder
-                </label>
-              </div>
-
-              <div className="flex gap-4">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex-1 bg-primary text-white py-2 px-4 rounded hover:bg-primary-light disabled:opacity-50"
-                >
-                  {loading ? 'Salvando...' : 'Salvar'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false)
-                    setEditingUser(null)
-                    resetForm()
-                  }}
-                  className="flex-1 bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-white py-2 px-4 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  )
+type AdminUser = Usuario & {
+  instrumento?: Instrumento | null
+  last_sign_in_at?: string | null
 }
 
+type UserForm = {
+  nome: string
+  email: string
+  senha: string
+  data_nascimento: string
+  cargo: 'cantor' | 'musico' | 'ambos'
+  lider: boolean
+  instrumento_id: string
+}
+
+const emptyForm: UserForm = {
+  nome: '', email: '', senha: '', data_nascimento: '', cargo: 'ambos', lider: false, instrumento_id: '',
+}
+
+const cargoLabel: Record<UserForm['cargo'], string> = { cantor: 'Cantor', musico: 'Músico', ambos: 'Cantor e músico' }
+
+function formatLastLogin(value?: string | null) {
+  if (!value) return 'Nunca entrou'
+  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
+}
+
+export default function UsuariosPage() {
+  const [users, setUsers] = useState<AdminUser[]>([])
+  const [instruments, setInstruments] = useState<Instrumento[]>([])
+  const [onlineIds, setOnlineIds] = useState<Set<string>>(new Set())
+  const [form, setForm] = useState<UserForm>(emptyForm)
+  const [editing, setEditing] = useState<AdminUser | null>(null)
+  const [opened, setOpened] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [cargo, setCargo] = useState('todos')
+  const [access, setAccess] = useState('todos')
+
+  const loadData = useCallback(async () => {
+    try {
+      setError(null)
+      const [usersResponse, instrumentsResponse] = await Promise.all([fetch('/api/usuarios'), fetch('/api/instrumentos')])
+      const [usersData, instrumentsData] = await Promise.all([usersResponse.json(), instrumentsResponse.json()])
+      if (!usersResponse.ok) throw new Error(usersData.error || 'Não foi possível carregar os usuários')
+      if (!instrumentsResponse.ok) throw new Error(instrumentsData.error || 'Não foi possível carregar os instrumentos')
+      setUsers(usersData)
+      setInstruments(instrumentsData)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível carregar os dados')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { loadData() }, [loadData])
+
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase.channel('louvor-online')
+
+    const syncPresence = () => {
+      const ids = Object.values(channel.presenceState())
+        .flat()
+        .map((presence) => (presence as unknown as { user_id?: string }).user_id)
+        .filter((id): id is string => Boolean(id))
+      setOnlineIds(new Set(ids))
+    }
+
+    channel.on('presence', { event: 'sync' }, syncPresence).subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
+
+  const filteredUsers = useMemo(() => users.filter((user) => {
+    const term = search.trim().toLowerCase()
+    const matchesText = !term || (user.nome || '').toLowerCase().includes(term) || user.email.toLowerCase().includes(term)
+    const matchesCargo = cargo === 'todos' || user.cargo === cargo
+    const matchesAccess = access === 'todos' || (access === 'admin' ? user.lider : !user.lider)
+    return matchesText && matchesCargo && matchesAccess
+  }), [users, search, cargo, access])
+
+  const openCreate = () => {
+    setEditing(null)
+    setForm(emptyForm)
+    setOpened(true)
+  }
+
+  const openEdit = (user: AdminUser) => {
+    setEditing(user)
+    setForm({
+      nome: user.nome || '', email: user.email, senha: '', data_nascimento: user.data_nascimento,
+      cargo: user.cargo, lider: user.lider, instrumento_id: user.instrumento_id || '',
+    })
+    setOpened(true)
+  }
+
+  const saveUser = async (event: FormEvent) => {
+    event.preventDefault()
+    setSaving(true)
+    try {
+      const body: Record<string, unknown> = {
+        nome: form.nome || null, email: form.email, data_nascimento: form.data_nascimento,
+        cargo: form.cargo, lider: form.lider, instrumento_id: form.instrumento_id || null,
+      }
+      if (form.senha.trim()) body.senha = form.senha
+      const response = await fetch(editing ? `/api/usuarios/${editing.id}` : '/api/usuarios', {
+        method: editing ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Não foi possível salvar o usuário')
+      setOpened(false)
+      await loadData()
+      notifications.show({ color: 'green', title: editing ? 'Usuário atualizado' : 'Usuário criado', message: 'As informações foram salvas.', icon: <IconCheck size={17} /> })
+    } catch (err) {
+      notifications.show({ color: 'red', title: 'Erro ao salvar', message: err instanceof Error ? err.message : 'Tente novamente.' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const deleteUser = async (user: AdminUser) => {
+    setDeletingId(user.id)
+    try {
+      const response = await fetch(`/api/usuarios/${user.id}`, { method: 'DELETE' })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Não foi possível remover o usuário')
+      await loadData()
+      notifications.show({ color: 'green', title: 'Usuário removido', message: `${user.nome || user.email} foi removido.` })
+    } catch (err) {
+      notifications.show({ color: 'red', title: 'Erro ao remover', message: err instanceof Error ? err.message : 'Tente novamente.' })
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const confirmDelete = (user: AdminUser) => modals.openConfirmModal({
+    title: 'Remover usuário?', centered: true,
+    children: <Text size="sm">A conta de <strong>{user.nome || user.email}</strong> será removida e perderá o acesso ao sistema. Esta ação não pode ser desfeita.</Text>,
+    labels: { confirm: 'Sim, remover', cancel: 'Cancelar' }, confirmProps: { color: 'red', leftSection: <IconTrash size={16} /> },
+    onConfirm: () => deleteUser(user),
+  })
+
+  return (
+    <Stack gap="lg">
+      <Group justify="space-between" align="flex-end">
+        <div>
+          <Button component={Link} href="/admin" variant="subtle" px={0} leftSection={<IconArrowLeft size={17} />}>Voltar</Button>
+          <Title order={1}>Gerenciar usuários</Title>
+          <Text c="dimmed">Contas, funções e atividade dos integrantes.</Text>
+        </div>
+        <Button leftSection={<IconPlus size={18} />} onClick={openCreate}>Novo usuário</Button>
+      </Group>
+
+      {error && <Alert color="red" icon={<IconAlertCircle size={18} />} title="Não foi possível carregar">{error}</Alert>}
+
+      <Paper withBorder p="md" radius="md">
+        <SimpleGrid cols={{ base: 1, sm: 3 }}>
+          <TextInput label="Buscar" placeholder="Nome ou e-mail" leftSection={<IconSearch size={17} />} value={search} onChange={(event) => setSearch(event.currentTarget.value)} />
+          <Select label="Função" value={cargo} onChange={(value) => setCargo(value || 'todos')} allowDeselect={false} data={[{ value: 'todos', label: 'Todas' }, { value: 'cantor', label: 'Cantor' }, { value: 'musico', label: 'Músico' }, { value: 'ambos', label: 'Cantor e músico' }]} />
+          <Select label="Acesso" value={access} onChange={(value) => setAccess(value || 'todos')} allowDeselect={false} data={[{ value: 'todos', label: 'Todos' }, { value: 'admin', label: 'Administradores' }, { value: 'membro', label: 'Membros' }]} />
+        </SimpleGrid>
+        <Text size="xs" c="dimmed" mt="sm">{filteredUsers.length} de {users.length} integrantes</Text>
+      </Paper>
+
+      {loading ? <Stack>{[1, 2, 3].map((item) => <Skeleton key={item} h={74} radius="md" />)}</Stack> : (
+        <>
+          <Paper withBorder radius="md" visibleFrom="md" style={{ overflowX: 'auto' }}>
+            <Table verticalSpacing="md" horizontalSpacing="md" highlightOnHover>
+              <Table.Thead><Table.Tr><Table.Th>Integrante</Table.Th><Table.Th>Função</Table.Th><Table.Th>Status</Table.Th><Table.Th>Último login</Table.Th><Table.Th>Acesso</Table.Th><Table.Th ta="right">Ações</Table.Th></Table.Tr></Table.Thead>
+              <Table.Tbody>{filteredUsers.map((user) => (
+                <Table.Tr key={user.id}>
+                  <Table.Td><Group gap="sm" wrap="nowrap"><Avatar color="ibce">{(user.nome || user.email).slice(0, 2).toUpperCase()}</Avatar><div><Text fw={600} size="sm">{user.nome || 'Sem nome'}</Text><Text c="dimmed" size="xs">{user.email}</Text></div></Group></Table.Td>
+                  <Table.Td><Text size="sm">{cargoLabel[user.cargo]}</Text><Text c="dimmed" size="xs">{user.instrumento?.nome || 'Sem instrumento'}</Text></Table.Td>
+                  <Table.Td><Badge color={onlineIds.has(user.id) ? 'green' : 'gray'} variant="dot">{onlineIds.has(user.id) ? 'Online' : 'Offline'}</Badge></Table.Td>
+                  <Table.Td><Text size="sm">{formatLastLogin(user.last_sign_in_at)}</Text></Table.Td>
+                  <Table.Td><Badge color={user.lider ? 'ibce' : 'gray'} variant="light">{user.lider ? 'Administrador' : 'Membro'}</Badge></Table.Td>
+                  <Table.Td><Group justify="flex-end" gap="xs"><Button variant="subtle" size="xs" leftSection={<IconEdit size={15} />} onClick={() => openEdit(user)}>Editar</Button><Button color="red" variant="subtle" size="xs" loading={deletingId === user.id} leftSection={<IconTrash size={15} />} onClick={() => confirmDelete(user)}>Remover</Button></Group></Table.Td>
+                </Table.Tr>
+              ))}</Table.Tbody>
+            </Table>
+          </Paper>
+
+          <Stack hiddenFrom="md" gap="sm">
+            {filteredUsers.map((user) => (
+              <Card key={user.id} withBorder radius="md" padding="md">
+                <Group justify="space-between" align="flex-start" wrap="nowrap"><Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}><Avatar color="ibce">{(user.nome || user.email).slice(0, 2).toUpperCase()}</Avatar><div style={{ minWidth: 0 }}><Text fw={700} truncate>{user.nome || 'Sem nome'}</Text><Text size="xs" c="dimmed" truncate>{user.email}</Text></div></Group><Badge color={onlineIds.has(user.id) ? 'green' : 'gray'} variant="dot">{onlineIds.has(user.id) ? 'Online' : 'Offline'}</Badge></Group>
+                <SimpleGrid cols={2} mt="md"><div><Text size="xs" c="dimmed">Função</Text><Text size="sm">{cargoLabel[user.cargo]}</Text></div><div><Text size="xs" c="dimmed">Último login</Text><Text size="sm">{formatLastLogin(user.last_sign_in_at)}</Text></div></SimpleGrid>
+                <Group mt="md" grow><Button variant="light" leftSection={<IconEdit size={16} />} onClick={() => openEdit(user)}>Editar</Button><Button color="red" variant="light" loading={deletingId === user.id} leftSection={<IconTrash size={16} />} onClick={() => confirmDelete(user)}>Remover</Button></Group>
+              </Card>
+            ))}
+          </Stack>
+        </>
+      )}
+
+      {!loading && filteredUsers.length === 0 && <Paper withBorder p="xl" radius="md" ta="center"><IconUser size={32} color="var(--mantine-color-dimmed)" /><Text fw={600} mt="sm">Nenhum usuário encontrado</Text><Text c="dimmed" size="sm">Ajuste os filtros e tente novamente.</Text></Paper>}
+
+      <Modal opened={opened} onClose={() => !saving && setOpened(false)} title={editing ? 'Editar usuário' : 'Novo usuário'} centered size="lg">
+        <form onSubmit={saveUser}>
+          <Stack>
+            <TextInput label="Nome completo" required value={form.nome} onChange={(event) => setForm({ ...form, nome: event.currentTarget.value })} />
+            <TextInput label="E-mail" type="email" required value={form.email} onChange={(event) => setForm({ ...form, email: event.currentTarget.value })} />
+            <PasswordInput label={editing ? 'Nova senha (opcional)' : 'Senha'} required={!editing} value={form.senha} onChange={(event) => setForm({ ...form, senha: event.currentTarget.value })} visibilityToggleButtonProps={({ visible }: { visible: boolean }) => ({ 'aria-label': visible ? 'Ocultar senha' : 'Mostrar senha' })} />
+            <TextInput label="Data de nascimento" type="date" required value={form.data_nascimento} onChange={(event) => setForm({ ...form, data_nascimento: event.currentTarget.value })} />
+            <SimpleGrid cols={{ base: 1, sm: 2 }}>
+              <Select label="Função" required allowDeselect={false} value={form.cargo} onChange={(value) => value && setForm({ ...form, cargo: value as UserForm['cargo'] })} data={[{ value: 'cantor', label: 'Cantor' }, { value: 'musico', label: 'Músico' }, { value: 'ambos', label: 'Cantor e músico' }]} />
+              <Select label="Instrumento" clearable value={form.instrumento_id || null} onChange={(value) => setForm({ ...form, instrumento_id: value || '' })} data={instruments.map((instrument) => ({ value: instrument.id, label: instrument.nome }))} />
+            </SimpleGrid>
+            <Switch label="Administrador/líder" checked={form.lider} onChange={(event) => setForm({ ...form, lider: event.currentTarget.checked })} />
+            <Group justify="flex-end"><Button variant="default" onClick={() => setOpened(false)} disabled={saving}>Cancelar</Button><Button type="submit" loading={saving}>Salvar</Button></Group>
+          </Stack>
+        </form>
+      </Modal>
+    </Stack>
+  )
+}

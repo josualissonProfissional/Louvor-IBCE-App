@@ -2,6 +2,8 @@
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import ChatTeologico from '@/components/ChatTeologico'
+import { Alert, Box, Grid, GridCol, List, ListItem, Stack, Text, Title } from '@mantine/core'
+import { IconInfoCircle } from '@tabler/icons-react'
 
 export const metadata = {
   title: 'IA Teológica | Ministério de Louvor IBCE',
@@ -16,61 +18,12 @@ export default async function IAPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 animate-fade-in">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-              <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
-                IA Teológica IBCE
-              </h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Análise bíblico-teológica de músicas com base confessional reformada
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Informações e Instruções */}
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl p-6 mb-6 border border-blue-200 dark:border-blue-800 animate-fade-in" style={{ animationDelay: '100ms' }}>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-            <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Como usar este assistente
-          </h2>
-          <div className="text-sm text-gray-700 dark:text-gray-300">
-            <div className="space-y-2">
-              <p className="font-medium text-gray-900 dark:text-white">📖 Exemplos de perguntas:</p>
-              <ul className="space-y-1 pl-4">
-                <li>• "Qual música cantar sobre o Salmo 139?"</li>
-                <li>• "Qual a base bíblica da música [Nome]?"</li>
-                <li>• "Esta letra é doutrinariamente correta?"</li>
-                <li>• "Músicas sobre soberania de Deus"</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        {/* Componente de Chat */}
-        <ChatTeologico />
-
-        {/* Footer Informativo */}
-        <div className="mt-6 text-center text-xs text-gray-500 dark:text-gray-400 animate-fade-in" style={{ animationDelay: '200ms' }}>
-          <p>
-            💡 Este assistente analisa as {'{músicas}'} cadastradas no banco de dados com perspectiva reformada.
-          </p>
-          <p className="mt-1">
-            Respostas baseadas em exegese bíblica e confissões reformadas históricas.
-          </p>
-        </div>
-      </div>
-    </div>
+    <Stack gap="lg">
+      <div><Title order={1} size="h2">Assistente teológico</Title><Text c="dimmed" mt={4}>Análise bíblico-teológica do repertório com perspectiva reformada.</Text></div>
+      <Grid gutter="lg" align="flex-start">
+        <GridCol span={{ base: 12, xl: 9 }}><ChatTeologico initialTimestamp={new Date().toISOString()} /></GridCol>
+        <GridCol span={{ base: 12, xl: 3 }}><Stack><Alert color="ibce" icon={<IconInfoCircle size={18} />} title="Sugestões de perguntas"><List size="sm" spacing="xs"><ListItem>Qual música cantar sobre o Salmo 139?</ListItem><ListItem>Qual a base bíblica desta letra?</ListItem><ListItem>Esta música é doutrinariamente adequada?</ListItem><ListItem>Músicas sobre a soberania de Deus</ListItem></List></Alert><Box p="md"><Text size="xs" c="dimmed">As respostas auxiliam o estudo e não substituem avaliação pastoral.</Text></Box></Stack></GridCol>
+      </Grid>
+    </Stack>
   )
 }

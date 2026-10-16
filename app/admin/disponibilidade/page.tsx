@@ -1,14 +1,17 @@
 // Página administrativa de disponibilidade de todos os membros
 import { redirect } from 'next/navigation'
-import { requireAdmin } from '@/lib/auth'
+import { getCurrentUser } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { formatDate, getDayName } from '@/lib/utils'
+import { Badge, Button, Group, Paper, Stack, Text, Title } from '@mantine/core'
+import { IconArrowLeft } from '@tabler/icons-react'
 import { Disponibilidade, Usuario, DiaAtuacao } from '@/types'
 import DisponibilidadeTable from '@/components/DisponibilidadeTable'
 
 export default async function AdminDisponibilidadePage() {
-  await requireAdmin()
+  const currentUser = await getCurrentUser()
+  if (!currentUser) redirect('/login')
+  if (!currentUser.lider) redirect('/')
 
   const supabase = createServerClient()
 
@@ -40,22 +43,11 @@ export default async function AdminDisponibilidadePage() {
   })
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <Link
-          href="/admin"
-          className="text-primary hover:underline mb-2 inline-block"
-        >
-          ← Voltar
-        </Link>
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Disponibilidade dos Membros
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Visualize a disponibilidade de todos os membros em todas as datas de atuação
-          </p>
-        </div>
+    <Stack gap="lg">
+      <div>
+        <Button component={Link} href="/admin" variant="subtle" px={0} leftSection={<IconArrowLeft size={17} />}>Voltar</Button>
+        <Title order={1}>Disponibilidade dos membros</Title>
+        <Text c="dimmed">Consulte as respostas da equipe organizadas por mês.</Text>
       </div>
 
       {(diasAtuacao as DiaAtuacao[] | null) && (diasAtuacao as DiaAtuacao[]).length > 0 && (usuarios as Usuario[] | null) && (usuarios as Usuario[]).length > 0 ? (
@@ -66,42 +58,19 @@ export default async function AdminDisponibilidadePage() {
           disponibilidadeMap={disponibilidadeMap}
         />
       ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center text-gray-500 dark:text-gray-400">
+        <Paper withBorder p="xl" radius="md" ta="center">
           {!(diasAtuacao as DiaAtuacao[] | null) || (diasAtuacao as DiaAtuacao[]).length === 0 ? (
-            <p>Nenhum dia de atuação cadastrado.</p>
+            <Text c="dimmed">Nenhum dia de atuação cadastrado.</Text>
           ) : (
-            <p>Nenhum usuário cadastrado.</p>
+            <Text c="dimmed">Nenhum usuário cadastrado.</Text>
           )}
-        </div>
+        </Paper>
       )}
 
-      {/* Legenda */}
-      <div className="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
-          Legenda:
-        </h3>
-        <div className="flex flex-wrap gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-blue-500 rounded"></div>
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              Disponível
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-red-500 rounded"></div>
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              Indisponível
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-gray-200 dark:bg-gray-600 rounded"></div>
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              Não informado
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
+      <Paper withBorder p="md" radius="md">
+        <Group gap="sm"><Text size="sm" fw={700}>Legenda</Text><Badge color="green" variant="light">Disponível</Badge><Badge color="red" variant="light">Indisponível</Badge><Badge color="gray" variant="light">Não informado</Badge></Group>
+      </Paper>
+    </Stack>
   )
 }
 
