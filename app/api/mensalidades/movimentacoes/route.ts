@@ -121,7 +121,7 @@ export async function POST(request: Request) {
       .from('movimentacoes_financeiras') as any)
       .insert({
         tipo,
-        categoria: categoria || (tipo === 'entrada' ? 'venda_lanche' : 'instrumentos'),
+        categoria: categoria || (tipo === 'entrada' ? 'Entradas' : 'Despesas'),
         descricao: descricao.trim(),
         valor: valorNum,
         data: dataFinal,

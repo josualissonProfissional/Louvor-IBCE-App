@@ -88,11 +88,11 @@ export default function MinhasMensalidadesPage() {
       notifications.show({
         color: 'green',
         title: 'Chave PIX copiada!',
-        message: 'A chave foi copiada para sua área de transferência.',
+        message: 'Chave copiada para a área de transferência.',
         icon: <IconCopy size={18} />,
       })
     } catch {
-      notifications.show({ color: 'red', title: 'Erro', message: 'Não foi possível copiar automaticamente.' })
+      notifications.show({ color: 'red', title: 'Erro', message: 'Não foi possível copiar.' })
     }
   }
 
@@ -128,7 +128,7 @@ export default function MinhasMensalidadesPage() {
         </ThemeIcon>
         <Title order={3} mt="md">Mensalidades Desativadas</Title>
         <Text c="dimmed" mt="xs" maw={480} mx="auto">
-          O módulo de mensalidade não está ativado pela liderança no momento.
+          O módulo de mensalidade não está ativado no momento.
         </Text>
       </Paper>
     )
@@ -138,8 +138,8 @@ export default function MinhasMensalidadesPage() {
     <Stack gap="lg">
       <Group justify="space-between" align="flex-start" wrap="wrap">
         <div>
-          <Title order={1}>Mensalidades & Finanças</Title>
-          <Text c="dimmed">Contribuição mensal e transparência dos recursos do Ministério de Louvor IBCE.</Text>
+          <Title order={1}>Mensalidades</Title>
+          <Text c="dimmed">Contribuição mensal e prestação de contas.</Text>
         </div>
 
         {canManage && (
@@ -149,14 +149,14 @@ export default function MinhasMensalidadesPage() {
         )}
       </Group>
 
-      {/* Abas: Minha Contribuição vs Prestação de Contas */}
+      {/* Abas: Minha Contribuição vs Transparência */}
       <Tabs value={activeTab} onChange={setActiveTab} variant="outline" radius="md">
         <Tabs.List mb="md">
           <Tabs.Tab value="minha" leftSection={<IconWallet size={18} />}>
             Minha Contribuição
           </Tabs.Tab>
           <Tabs.Tab value="transparencia" leftSection={<IconReceipt size={18} />}>
-            Transparência & Caixa do Ministério
+            Transparência
           </Tabs.Tab>
         </Tabs.List>
 
@@ -172,7 +172,7 @@ export default function MinhasMensalidadesPage() {
                       <Badge size="lg" color="ibce" variant="light">
                         {pagamentoAtual.ciclo ? `${mesesNomes[pagamentoAtual.ciclo.mes - 1]} de ${pagamentoAtual.ciclo.ano}` : 'Mês Atual'}
                       </Badge>
-                      {isAtualPago && <Badge color="green" size="lg" variant="filled" leftSection={<IconCheck size={14} />}>Mensalidade Paga</Badge>}
+                      {isAtualPago && <Badge color="green" size="lg" variant="filled" leftSection={<IconCheck size={14} />}>Pago</Badge>}
                       {isAtualIsento && <Badge color="blue" size="lg" variant="filled">Isento</Badge>}
                       {!isAtualPago && !isAtualIsento && <Badge color="orange" size="lg" variant="filled">Pendente</Badge>}
                     </Group>
@@ -183,8 +183,8 @@ export default function MinhasMensalidadesPage() {
 
                     <Text size="sm" c="dimmed" mt="xs">
                       {isAtualPago
-                        ? `Pagamento confirmado em ${formatData(pagamentoAtual.data_pagamento)}. Muito obrigado pela sua contribuição!`
-                        : `Vencimento: ${formatData(pagamentoAtual.ciclo?.data_vencimento)}. Por favor, realize o pagamento até a data limite.`}
+                        ? `Confirmado em ${formatData(pagamentoAtual.data_pagamento)}.`
+                        : `Vencimento: ${formatData(pagamentoAtual.ciclo?.data_vencimento)}.`}
                     </Text>
                   </Grid.Col>
 
@@ -198,10 +198,10 @@ export default function MinhasMensalidadesPage() {
                         </Group>
 
                         <Box p="xs" bg="var(--app-surface)" style={{ borderRadius: 6, border: '1px solid var(--app-border)' }} mb="xs">
-                          <Text size="xs" c="dimmed">Chave PIX:</Text>
+                          <Text size="xs" c="dimmed">Chave:</Text>
                           <Text fw={650} size="sm" style={{ wordBreak: 'break-all' }}>{config.chave_pix}</Text>
                           {config.beneficiario_pix && (
-                            <Text size="xs" c="dimmed" mt={4}>Beneficiário: {config.beneficiario_pix}</Text>
+                            <Text size="xs" c="dimmed" mt={4}>Titular: {config.beneficiario_pix}</Text>
                           )}
                         </Box>
 
@@ -225,7 +225,7 @@ export default function MinhasMensalidadesPage() {
                   <IconShieldCheck size={28} />
                 </ThemeIcon>
                 <Title order={3} mt="md">Nenhuma mensalidade em aberto</Title>
-                <Text c="dimmed" mt="xs">Você está em dia ou não há ciclos ativos no momento.</Text>
+                <Text c="dimmed" mt="xs">Tudo em dia por aqui.</Text>
               </Paper>
             )}
 
@@ -233,17 +233,17 @@ export default function MinhasMensalidadesPage() {
             <Card withBorder padding="lg" radius="md" bg="var(--app-surface)">
               <Group gap="xs" mb="md">
                 <ThemeIcon color="ibce" variant="light"><IconHistory size={18} /></ThemeIcon>
-                <Title order={3} size="h4">Histórico de Contribuições</Title>
+                <Title order={3} size="h4">Histórico</Title>
               </Group>
 
               {historico.length === 0 ? (
-                <Text c="dimmed" size="sm">Nenhum registro no seu histórico.</Text>
+                <Text c="dimmed" size="sm">Nenhum registro encontrado.</Text>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
                   <Table verticalSpacing="sm" horizontalSpacing="md">
                     <Table.Thead>
                       <Table.Tr>
-                        <Table.Th>Mês de Referência</Table.Th>
+                        <Table.Th>Mês</Table.Th>
                         <Table.Th>Valor</Table.Th>
                         <Table.Th>Vencimento</Table.Th>
                         <Table.Th>Status</Table.Th>
@@ -276,10 +276,10 @@ export default function MinhasMensalidadesPage() {
           </Stack>
         </Tabs.Panel>
 
-        {/* ABA 2: TRANSPARÊNCIA & PRESTAÇÃO DE CONTAS */}
+        {/* ABA 2: TRANSPARÊNCIA */}
         <Tabs.Panel value="transparencia">
           <Stack gap="lg">
-            {/* Cards de Resumo para Membros */}
+            {/* Cards de Resumo */}
             <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
               <Paper
                 withBorder
@@ -299,18 +299,18 @@ export default function MinhasMensalidadesPage() {
                 <Text size="xl" fw={800} c={resumoCaixa.saldo_em_caixa >= 0 ? 'green.7' : 'red.7'} mt="xs">
                   {formatMoeda(resumoCaixa.saldo_em_caixa)}
                 </Text>
-                <Text size="xs" c="dimmed" mt={4}>Disponível para o ministério</Text>
+                <Text size="xs" c="dimmed" mt={4}>Disponível</Text>
               </Paper>
 
               <Paper withBorder p="md" radius="md">
                 <Group justify="space-between">
-                  <Text size="xs" c="dimmed" fw={700}>MENSALIDADES ARRECADADAS</Text>
+                  <Text size="xs" c="dimmed" fw={700}>MENSALIDADES</Text>
                   <ThemeIcon color="blue" variant="light" size="lg"><IconCoin size={20} /></ThemeIcon>
                 </Group>
                 <Text size="xl" fw={700} c="blue.7" mt="xs">
                   {formatMoeda(resumoCaixa.total_mensalidades_arrecadadas)}
                 </Text>
-                <Text size="xs" c="dimmed" mt={4}>Contribuição coletiva dos integrantes</Text>
+                <Text size="xs" c="dimmed" mt={4}>Total arrecadado</Text>
               </Paper>
 
               <Paper withBorder p="md" radius="md">
@@ -321,30 +321,25 @@ export default function MinhasMensalidadesPage() {
                 <Text size="xl" fw={700} c="teal.7" mt="xs">
                   {formatMoeda(resumoCaixa.total_outras_entradas)}
                 </Text>
-                <Text size="xs" c="dimmed" mt={4}>Venda de lanches, doações e cantina</Text>
+                <Text size="xs" c="dimmed" mt={4}>Receitas extras</Text>
               </Paper>
 
               <Paper withBorder p="md" radius="md">
                 <Group justify="space-between">
-                  <Text size="xs" c="dimmed" fw={700}>INVESTIMENTOS & SAÍDAS</Text>
+                  <Text size="xs" c="dimmed" fw={700}>DESPESAS</Text>
                   <ThemeIcon color="red" variant="light" size="lg"><IconArrowUpRight size={20} /></ThemeIcon>
                 </Group>
                 <Text size="xl" fw={700} c="red.7" mt="xs">
                   {formatMoeda(resumoCaixa.total_saidas)}
                 </Text>
-                <Text size="xs" c="dimmed" mt={4}>Instrumentos, cabos, manutenções</Text>
+                <Text size="xs" c="dimmed" mt={4}>Total de saídas</Text>
               </Paper>
             </SimpleGrid>
 
-            {/* Lista de Movimentações (Transparência de onde vai o recurso) */}
+            {/* Lista de Movimentações */}
             <Card withBorder padding="lg" radius="md" bg="var(--app-surface)">
               <Group justify="space-between" mb="md" wrap="wrap">
-                <div>
-                  <Title order={3} size="h4">Entradas e Investimentos Recentes</Title>
-                  <Text size="xs" c="dimmed">
-                    Prestação de contas aberta: acompanhe onde os recursos do louvor estão sendo investidos.
-                  </Text>
-                </div>
+                <Title order={3} size="h4">Movimentações Recentes</Title>
                 <Badge color="ibce" variant="light">
                   {movimentacoes.length} lançamentos
                 </Badge>
@@ -355,7 +350,7 @@ export default function MinhasMensalidadesPage() {
                   <ThemeIcon size={48} radius="xl" color="gray" variant="light" mx="auto">
                     <IconReceipt size={24} />
                   </ThemeIcon>
-                  <Text c="dimmed" mt="xs" size="sm">Nenhuma movimentação externa registrada no caixa ainda.</Text>
+                  <Text c="dimmed" mt="xs" size="sm">Nenhuma movimentação registrada.</Text>
                 </Paper>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
