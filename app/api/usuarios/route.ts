@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     const supabase = createAdminClient()
     const body = await request.json()
 
-    const { nome, email, senha, data_nascimento, cargo, lider, instrumento_id } = body
+    const { nome, email, senha, data_nascimento, cargo, lider, instrumento_id, tesoureiro } = body
 
     // Cria usuário no Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
       data_nascimento,
       cargo,
       lider: lider || false,
+      tesoureiro: tesoureiro || false,
       instrumento_id: instrumento_id || null,
     }
 

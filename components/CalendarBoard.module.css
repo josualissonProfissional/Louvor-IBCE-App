@@ -7,6 +7,7 @@
 
 .header {
   margin-bottom: var(--mantine-spacing-md);
+  padding: 4px 0;
 }
 
 .month {
@@ -25,6 +26,8 @@
   border-radius: var(--mantine-radius-sm);
   background: var(--app-surface);
   transition: all 0.15s ease;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .day:hover {
@@ -132,6 +135,16 @@
 }
 
 @media (max-width: 48em) {
-  .cell { padding: 2px; }
-  .day { height: 68px; padding: 4px; }
+  .header {
+    margin-bottom: var(--mantine-spacing-xs);
+    padding: 2px 0;
+  }
+  .cell {
+    padding: 1px;
+  }
+  .day {
+    height: 52px;
+    padding: 3px 2px;
+    border-radius: 6px;
+  }
 }

@@ -12,15 +12,19 @@ import {
 import { useDisclosure } from '@mantine/hooks'
 import {
   IconBrain, IconCalendarEvent, IconChevronDown, IconClipboardCheck,
-  IconDashboard, IconLogin, IconLogout, IconMoon, IconMusic, IconSettings, IconSun,
+  IconCoin, IconDashboard, IconLogin, IconLogout, IconMoon, IconMusic,
+  IconSettings, IconSun, IconWallet,
 } from '@tabler/icons-react'
 import { createClient } from '@/lib/supabase/client'
+import { NotificationBell } from './NotificationBell'
+import { NotificationPopupModal } from './NotificationPopupModal'
 
 type NavigationUser = {
   id: string
   nome: string | null
   email: string
   lider: boolean
+  tesoureiro: boolean
   cargo: 'cantor' | 'musico' | 'ambos'
   instrumento_id: string | null
 }
@@ -40,10 +44,16 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [opened, { toggle, close }] = useDisclosure(false)
   const { toggleColorScheme } = useMantineColorScheme()
-  const colorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true })
+  const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true })
+  const [mounted, setMounted] = useState(false)
   const [user, setUser] = useState<NavigationUser | null>(null)
+  const [moduloMensalidadeAtivo, setModuloMensalidadeAtivo] = useState(false)
   const [loading, setLoading] = useState(true)
   const [navigating, setNavigating] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -59,13 +69,24 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
 
       const { data } = await supabase
         .from('usuarios')
-        .select('id, nome, email, lider, cargo, instrumento_id')
+        .select('id, nome, email, lider, tesoureiro, cargo, instrumento_id')
         .eq('id', authData.user.id)
         .single()
 
       if (active) {
         setUser(data)
         setLoading(false)
+      }
+
+      // Consulta se o módulo de mensalidade está ativo no sistema
+      const { data: cfg } = await (supabase
+        .from('configuracoes') as any)
+        .select('modulo_mensalidade_ativo')
+        .eq('id', 'geral')
+        .maybeSingle()
+
+      if (active && (cfg as any)?.modulo_mensalidade_ativo) {
+        setModuloMensalidadeAtivo(true)
       }
     }
 
@@ -180,12 +201,20 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
           </Group>
 
           <Group gap="xs" wrap="nowrap">
+            {user && <NotificationBell />}
+
             <ActionIcon
-              variant="subtle" color="gray" size="lg"
+              variant="subtle"
+              color="gray"
+              size="lg"
               onClick={toggleColorScheme}
-              aria-label={colorScheme === 'dark' ? 'Usar tema claro' : 'Usar tema escuro'}
+              aria-label={mounted ? (computedColorScheme === 'dark' ? 'Usar tema claro' : 'Usar tema escuro') : 'Alternar tema'}
             >
-              {colorScheme === 'dark' ? <IconSun size={19} /> : <IconMoon size={19} />}
+              {mounted ? (
+                computedColorScheme === 'dark' ? <IconSun size={19} /> : <IconMoon size={19} />
+              ) : (
+                <Box w={19} h={19} />
+              )}
             </ActionIcon>
 
             {loading ? <Skeleton h={36} w={112} radius="sm" /> : user ? (
@@ -209,6 +238,16 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
                       Administração
                     </Menu.Item>
                   )}
+                  {(user.lider || user.tesoureiro) && (
+                    <Menu.Item component={Link} href="/admin/mensalidades" leftSection={<IconCoin size={16} />}>
+                      Tesouraria
+                    </Menu.Item>
+                  )}
+                  {(moduloMensalidadeAtivo || user.lider || user.tesoureiro) && (
+                    <Menu.Item component={Link} href="/mensalidades" leftSection={<IconWallet size={16} />}>
+                      Minha Mensalidade
+                    </Menu.Item>
+                  )}
                   <Menu.Item color="red" leftSection={<IconLogout size={16} />} onClick={handleLogout}>Sair</Menu.Item>
                 </Menu.Dropdown>
               </Menu>
@@ -227,11 +266,15 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
             <Text size="xs" fw={700} c="dimmed" px="sm" py={6}>NAVEGAÇÃO</Text>
             {publicItems.map(renderItem)}
             {user && memberItems.map(renderItem)}
-            {user?.lider && (
+            {user && (moduloMensalidadeAtivo || user.lider || user.tesoureiro) && (
+              renderItem({ href: '/mensalidades', label: 'Mensalidade', icon: IconWallet })
+            )}
+            {(user?.lider || user?.tesoureiro) && (
               <>
                 <Divider my="xs" />
                 <Text size="xs" fw={700} c="dimmed" px="sm" py={6}>GESTÃO</Text>
-                {renderItem({ href: '/admin', label: 'Administração', icon: IconSettings })}
+                {user?.lider && renderItem({ href: '/admin', label: 'Administração', icon: IconSettings })}
+                {renderItem({ href: '/admin/mensalidades', label: 'Tesouraria', icon: IconCoin })}
               </>
             )}
           </Stack>
@@ -242,7 +285,10 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
         </AppShell.Section>
       </AppShell.Navbar>
 
-      <AppShell.Main><Box w="100%" maw={1600} mx="auto">{children}</Box></AppShell.Main>
+      <AppShell.Main>
+        <Box w="100%" maw={1600} mx="auto">{children}</Box>
+        {user && <NotificationPopupModal />}
+      </AppShell.Main>
     </AppShell>
   )
 }

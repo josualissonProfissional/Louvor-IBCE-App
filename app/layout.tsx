@@ -28,11 +28,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="pt-BR" {...mantineHtmlProps}>
+    <html lang="pt-BR" {...mantineHtmlProps} suppressHydrationWarning>
       <head>
         <ColorSchemeScript defaultColorScheme="auto" />
       </head>
-      <body className={inter.variable}>
+      <body className={inter.variable} suppressHydrationWarning>
         <AppProvider>
           <YouTubePlayerProvider>
             <AppFrame>{children}</AppFrame>

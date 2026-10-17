@@ -1,5 +1,6 @@
 'use client'
 
+import { useId } from 'react'
 import {
   closestCenter, DndContext, DragEndEvent, KeyboardSensor, MouseSensor,
   TouchSensor, useSensor, useSensors,
@@ -117,6 +118,7 @@ interface SortableRepertoireProps {
 }
 
 export default function SortableRepertoire({ songs, editable, saving, onOpen, onReorder }: SortableRepertoireProps) {
+  const dndId = useId()
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }),
@@ -138,7 +140,7 @@ export default function SortableRepertoire({ songs, editable, saving, onOpen, on
   }
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={ids} strategy={verticalListSortingStrategy}>
         <Stack gap="xs">
           {songs.map((song, index) => (

@@ -14,7 +14,7 @@ export async function PUT(
     const supabase = createAdminClient()
     const body = await request.json()
 
-    const { nome, email, senha, data_nascimento, cargo, lider, instrumento_id } = body
+    const { nome, email, senha, data_nascimento, cargo, lider, instrumento_id, tesoureiro } = body
 
     // Se uma nova senha foi fornecida, atualiza no Supabase Auth
     if (senha && senha.trim() !== '') {
@@ -33,6 +33,7 @@ export async function PUT(
       cargo,
       lider,
       instrumento_id: instrumento_id || null,
+      ...(tesoureiro !== undefined && { tesoureiro: Boolean(tesoureiro) }),
       updated_at: new Date().toISOString(),
     }
 

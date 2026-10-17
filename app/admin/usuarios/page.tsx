@@ -27,11 +27,12 @@ type UserForm = {
   data_nascimento: string
   cargo: 'cantor' | 'musico' | 'ambos'
   lider: boolean
+  tesoureiro: boolean
   instrumento_id: string
 }
 
 const emptyForm: UserForm = {
-  nome: '', email: '', senha: '', data_nascimento: '', cargo: 'ambos', lider: false, instrumento_id: '',
+  nome: '', email: '', senha: '', data_nascimento: '', cargo: 'ambos', lider: false, tesoureiro: false, instrumento_id: '',
 }
 
 const cargoLabel: Record<UserForm['cargo'], string> = { cantor: 'Cantor', musico: 'Músico', ambos: 'Cantor e músico' }
@@ -94,7 +95,7 @@ export default function UsuariosPage() {
     const term = search.trim().toLowerCase()
     const matchesText = !term || (user.nome || '').toLowerCase().includes(term) || user.email.toLowerCase().includes(term)
     const matchesCargo = cargo === 'todos' || user.cargo === cargo
-    const matchesAccess = access === 'todos' || (access === 'admin' ? user.lider : !user.lider)
+    const matchesAccess = access === 'todos' || (access === 'admin' ? user.lider : access === 'tesoureiro' ? user.tesoureiro : (!user.lider && !user.tesoureiro))
     return matchesText && matchesCargo && matchesAccess
   }), [users, search, cargo, access])
 
@@ -108,7 +109,7 @@ export default function UsuariosPage() {
     setEditing(user)
     setForm({
       nome: user.nome || '', email: user.email, senha: '', data_nascimento: user.data_nascimento,
-      cargo: user.cargo, lider: user.lider, instrumento_id: user.instrumento_id || '',
+      cargo: user.cargo, lider: user.lider, tesoureiro: Boolean(user.tesoureiro), instrumento_id: user.instrumento_id || '',
     })
     setOpened(true)
   }
@@ -119,7 +120,7 @@ export default function UsuariosPage() {
     try {
       const body: Record<string, unknown> = {
         nome: form.nome || null, email: form.email, data_nascimento: form.data_nascimento,
-        cargo: form.cargo, lider: form.lider, instrumento_id: form.instrumento_id || null,
+        cargo: form.cargo, lider: form.lider, tesoureiro: form.tesoureiro, instrumento_id: form.instrumento_id || null,
       }
       if (form.senha.trim()) body.senha = form.senha
       const response = await fetch(editing ? `/api/usuarios/${editing.id}` : '/api/usuarios', {
@@ -176,7 +177,7 @@ export default function UsuariosPage() {
         <SimpleGrid cols={{ base: 1, sm: 3 }}>
           <TextInput label="Buscar" placeholder="Nome ou e-mail" leftSection={<IconSearch size={17} />} value={search} onChange={(event) => setSearch(event.currentTarget.value)} />
           <Select label="Função" value={cargo} onChange={(value) => setCargo(value || 'todos')} allowDeselect={false} data={[{ value: 'todos', label: 'Todas' }, { value: 'cantor', label: 'Cantor' }, { value: 'musico', label: 'Músico' }, { value: 'ambos', label: 'Cantor e músico' }]} />
-          <Select label="Acesso" value={access} onChange={(value) => setAccess(value || 'todos')} allowDeselect={false} data={[{ value: 'todos', label: 'Todos' }, { value: 'admin', label: 'Administradores' }, { value: 'membro', label: 'Membros' }]} />
+          <Select label="Acesso" value={access} onChange={(value) => setAccess(value || 'todos')} allowDeselect={false} data={[{ value: 'todos', label: 'Todos' }, { value: 'admin', label: 'Líderes' }, { value: 'tesoureiro', label: 'Tesoureiros' }, { value: 'membro', label: 'Membros' }]} />
         </SimpleGrid>
         <Text size="xs" c="dimmed" mt="sm">{filteredUsers.length} de {users.length} integrantes</Text>
       </Paper>
@@ -192,7 +193,13 @@ export default function UsuariosPage() {
                   <Table.Td><Text size="sm">{cargoLabel[user.cargo]}</Text><Text c="dimmed" size="xs">{user.instrumento?.nome || 'Sem instrumento'}</Text></Table.Td>
                   <Table.Td><Badge color={onlineIds.has(user.id) ? 'green' : 'gray'} variant="dot">{onlineIds.has(user.id) ? 'Online' : 'Offline'}</Badge></Table.Td>
                   <Table.Td><Text size="sm">{formatLastLogin(user.last_sign_in_at)}</Text></Table.Td>
-                  <Table.Td><Badge color={user.lider ? 'ibce' : 'gray'} variant="light">{user.lider ? 'Administrador' : 'Membro'}</Badge></Table.Td>
+                  <Table.Td>
+                    <Group gap={4}>
+                      {user.lider && <Badge color="ibce" variant="light">Líder</Badge>}
+                      {user.tesoureiro && <Badge color="yellow" variant="light">Tesoureiro</Badge>}
+                      {!user.lider && !user.tesoureiro && <Badge color="gray" variant="light">Membro</Badge>}
+                    </Group>
+                  </Table.Td>
                   <Table.Td><Group justify="flex-end" gap="xs"><Button variant="subtle" size="xs" leftSection={<IconEdit size={15} />} onClick={() => openEdit(user)}>Editar</Button><Button color="red" variant="subtle" size="xs" loading={deletingId === user.id} leftSection={<IconTrash size={15} />} onClick={() => confirmDelete(user)}>Remover</Button></Group></Table.Td>
                 </Table.Tr>
               ))}</Table.Tbody>
@@ -203,7 +210,10 @@ export default function UsuariosPage() {
             {filteredUsers.map((user) => (
               <Card key={user.id} withBorder radius="md" padding="md">
                 <Group justify="space-between" align="flex-start" wrap="nowrap"><Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}><Avatar color="ibce">{(user.nome || user.email).slice(0, 2).toUpperCase()}</Avatar><div style={{ minWidth: 0 }}><Text fw={700} truncate>{user.nome || 'Sem nome'}</Text><Text size="xs" c="dimmed" truncate>{user.email}</Text></div></Group><Badge color={onlineIds.has(user.id) ? 'green' : 'gray'} variant="dot">{onlineIds.has(user.id) ? 'Online' : 'Offline'}</Badge></Group>
-                <SimpleGrid cols={2} mt="md"><div><Text size="xs" c="dimmed">Função</Text><Text size="sm">{cargoLabel[user.cargo]}</Text></div><div><Text size="xs" c="dimmed">Último login</Text><Text size="sm">{formatLastLogin(user.last_sign_in_at)}</Text></div></SimpleGrid>
+                <SimpleGrid cols={2} mt="md">
+                  <div><Text size="xs" c="dimmed">Função</Text><Text size="sm">{cargoLabel[user.cargo]}</Text></div>
+                  <div><Text size="xs" c="dimmed">Acesso</Text><Text size="sm">{user.lider ? 'Líder' : user.tesoureiro ? 'Tesoureiro' : 'Membro'}</Text></div>
+                </SimpleGrid>
                 <Group mt="md" grow><Button variant="light" leftSection={<IconEdit size={16} />} onClick={() => openEdit(user)}>Editar</Button><Button color="red" variant="light" loading={deletingId === user.id} leftSection={<IconTrash size={16} />} onClick={() => confirmDelete(user)}>Remover</Button></Group>
               </Card>
             ))}
@@ -224,7 +234,8 @@ export default function UsuariosPage() {
               <Select label="Função" required allowDeselect={false} value={form.cargo} onChange={(value) => value && setForm({ ...form, cargo: value as UserForm['cargo'] })} data={[{ value: 'cantor', label: 'Cantor' }, { value: 'musico', label: 'Músico' }, { value: 'ambos', label: 'Cantor e músico' }]} />
               <Select label="Instrumento" clearable value={form.instrumento_id || null} onChange={(value) => setForm({ ...form, instrumento_id: value || '' })} data={instruments.map((instrument) => ({ value: instrument.id, label: instrument.nome }))} />
             </SimpleGrid>
-            <Switch label="Administrador/líder" checked={form.lider} onChange={(event) => setForm({ ...form, lider: event.currentTarget.checked })} />
+            <Switch label="Administrador / Líder (Acesso total ao sistema)" checked={form.lider} onChange={(event) => setForm({ ...form, lider: event.currentTarget.checked })} />
+            <Switch label="Tesoureiro (Gestão e baixa de mensalidades)" checked={form.tesoureiro} onChange={(event) => setForm({ ...form, tesoureiro: event.currentTarget.checked })} />
             <Group justify="flex-end"><Button variant="default" onClick={() => setOpened(false)} disabled={saving}>Cancelar</Button><Button type="submit" loading={saving}>Salvar</Button></Group>
           </Stack>
         </form>

@@ -64,31 +64,60 @@ export default function EscalaCalendar({ diasAtuacao, escalas: initial, isAdmin,
     const isSelected = selected === value
 
     return (
-      <Stack gap={2} align="stretch" w="100%">
-        <Group justify="space-between" align="center" wrap="nowrap">
-          <Text size="sm" fw={acting ? 700 : 500} c={isSelected ? 'white' : acting ? 'ibce.9' : undefined}>
+      <Stack gap={1} align="stretch" w="100%" h="100%" justify="space-between">
+        {/* Desktop (sm em diante) */}
+        <Box visibleFrom="sm">
+          <Group justify="space-between" align="center" wrap="nowrap">
+            <Text size="sm" fw={acting ? 700 : 500} c={isSelected ? 'white' : acting ? 'ibce.9' : undefined}>
+              {Number(value.slice(8, 10))}
+            </Text>
+            {acting && (
+              <Badge
+                size="xs"
+                variant={isSelected ? 'white' : 'filled'}
+                color="ibce"
+                radius="xs"
+                px={4}
+                h={16}
+                fz={9}
+                fw={700}
+              >
+                Culto
+              </Badge>
+            )}
+          </Group>
+          {count > 0 && (
+            <Text fz={9} c={isSelected ? 'white' : 'olive.7'} fw={700} lh={1} mt={4}>
+              Escala ({count})
+            </Text>
+          )}
+        </Box>
+
+        {/* Mobile (abaixo de sm) */}
+        <Stack hiddenFrom="sm" gap={1} align="center" justify="center" h="100%">
+          <Text
+            size="xs"
+            fw={acting ? 700 : 500}
+            c={isSelected ? 'white' : acting ? 'ibce.9' : undefined}
+            lh={1.1}
+          >
             {Number(value.slice(8, 10))}
           </Text>
           {acting && (
             <Badge
               size="xs"
-              variant={isSelected ? 'white' : 'filled'}
+              variant={isSelected ? 'white' : 'light'}
               color="ibce"
               radius="xs"
-              px={4}
-              h={{ base: 14, sm: 16 }}
-              fz={{ base: 8, sm: 9 }}
+              px={2}
+              h={13}
+              fz={7.5}
               fw={700}
             >
-              Culto
+              {count > 0 ? `Escala (${count})` : 'Culto'}
             </Badge>
           )}
-        </Group>
-        {count > 0 && (
-          <Text fz={{ base: 7, sm: 9 }} c={isSelected ? 'white' : 'olive.7'} fw={700} lh={1} mt={1}>
-            Escala ({count})
-          </Text>
-        )}
+        </Stack>
       </Stack>
     )
   }
@@ -98,8 +127,8 @@ export default function EscalaCalendar({ diasAtuacao, escalas: initial, isAdmin,
   if (!mounted) {
     return (
       <Grid gutter="lg" align="flex-start" aria-label="Carregando calendário de escalas">
-        <Grid.Col span={{ base: 12, xl: 8 }}><Card withBorder padding="lg" bg="var(--app-surface)"><Skeleton h={510} radius="sm" /></Card></Grid.Col>
-        <Grid.Col span={{ base: 12, xl: 4 }}><Card withBorder padding="lg" bg="var(--app-surface)"><Stack gap="md"><Skeleton h={24} w="58%" /><Skeleton h={14} w="76%" /><Skeleton h={180} mt="md" /></Stack></Card></Grid.Col>
+        <Grid.Col span={{ base: 12, xl: 8 }}><Card withBorder padding="xs" p={{ base: 'xs', sm: 'md', md: 'lg' }} bg="var(--app-surface)"><Skeleton h={510} radius="sm" /></Card></Grid.Col>
+        <Grid.Col span={{ base: 12, xl: 4 }}><Card withBorder padding="xs" p={{ base: 'xs', sm: 'md', md: 'lg' }} bg="var(--app-surface)"><Stack gap="md"><Skeleton h={24} w="58%" /><Skeleton h={14} w="76%" /><Skeleton h={180} mt="md" /></Stack></Card></Grid.Col>
       </Grid>
     )
   }
@@ -107,7 +136,7 @@ export default function EscalaCalendar({ diasAtuacao, escalas: initial, isAdmin,
   return (
     <Grid gutter="lg" align="flex-start">
       <Grid.Col span={{ base: 12, xl: 8 }}>
-        <Card withBorder padding="lg" bg="var(--app-surface)">
+        <Card withBorder padding="xs" p={{ base: 'xs', sm: 'md', md: 'lg' }} bg="var(--app-surface)">
           <DatesProvider settings={{ locale: 'pt-br', firstDayOfWeek: 0, weekendDays: [0, 6] }}>
             <Calendar
               date={month}
@@ -132,7 +161,7 @@ export default function EscalaCalendar({ diasAtuacao, escalas: initial, isAdmin,
         </Card>
       </Grid.Col>
       <Grid.Col span={{ base: 12, xl: 4 }}>
-        <Card withBorder padding="lg" bg="var(--app-surface)">
+        <Card withBorder padding="xs" p={{ base: 'xs', sm: 'md', md: 'lg' }} bg="var(--app-surface)">
           <Group justify="space-between" mb="lg">
             <Box>
               <Text fw={700} size="lg">{selected ? format(parseDate(selected), "dd 'de' MMMM", { locale: ptBR }) : 'Detalhes da escala'}</Text>

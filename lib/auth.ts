@@ -70,4 +70,20 @@ export async function requireAdmin(): Promise<Usuario> {
   return user
 }
 
+/**
+ * Verifica se o usuário tem acesso à gestão financeira (Líder tem acesso total, Tesoureiro tem acesso à tesouraria)
+ */
+export async function canManageFinances(): Promise<boolean> {
+  const user = await getCurrentUser()
+  return user?.lider === true || user?.tesoureiro === true
+}
+
+export async function requireFinanceManager(): Promise<Usuario> {
+  const user = await requireAuth()
+  if (!user.lider && !user.tesoureiro) {
+    throw new Error('Acesso negado: apenas o líder ou o tesoureiro podem acessar')
+  }
+  return user
+}
+
 

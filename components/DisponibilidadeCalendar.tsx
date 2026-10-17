@@ -66,49 +66,79 @@ export default function DisponibilidadeCalendar({ diasAtuacao, disponibilidade: 
     const isUnavailable = status?.status === 'indisponivel'
 
     return (
-      <Stack gap={2} align="stretch" w="100%">
-        <Group justify="space-between" align="center" wrap="nowrap">
+      <Stack gap={1} align="stretch" w="100%" h="100%" justify="space-between">
+        {/* Desktop (sm em diante) */}
+        <Box visibleFrom="sm">
+          <Group justify="space-between" align="center" wrap="nowrap">
+            <Text
+              size="sm"
+              fw={acting ? 700 : 500}
+              c={isAvailable ? 'white' : isUnavailable ? 'red.8' : acting ? 'ibce.9' : undefined}
+            >
+              {date.getDate()}
+            </Text>
+            {acting && (
+              <Badge
+                size="xs"
+                variant={isAvailable ? 'white' : isUnavailable ? 'light' : 'light'}
+                color={isUnavailable ? 'red' : 'ibce'}
+                radius="xs"
+                px={4}
+                h={16}
+                fz={9}
+                fw={700}
+              >
+                Culto
+              </Badge>
+            )}
+          </Group>
+
+          {status && (
+            <Badge
+              size="xs"
+              variant={isAvailable ? 'white' : 'filled'}
+              color={isAvailable ? 'ibce' : 'red'}
+              radius="xs"
+              px={4}
+              h={16}
+              fz={9}
+              fw={700}
+              mt={4}
+              w="100%"
+            >
+              {isAvailable ? 'Disponível' : 'Indisponível'}
+            </Badge>
+          )}
+        </Box>
+
+        {/* Mobile (abaixo de sm) */}
+        <Stack hiddenFrom="sm" gap={1} align="center" justify="center" h="100%">
           <Text
-            size="sm"
+            size="xs"
             fw={acting ? 700 : 500}
             c={isAvailable ? 'white' : isUnavailable ? 'red.8' : acting ? 'ibce.9' : undefined}
+            lh={1.1}
           >
             {date.getDate()}
           </Text>
           {acting && (
             <Badge
               size="xs"
-              variant={isAvailable ? 'white' : isUnavailable ? 'light' : 'light'}
+              variant={isAvailable ? 'white' : isUnavailable ? 'filled' : 'light'}
               color={isUnavailable ? 'red' : 'ibce'}
               radius="xs"
-              px={4}
-              h={{ base: 14, sm: 16 }}
-              fz={{ base: 8, sm: 9 }}
+              px={2}
+              h={13}
+              fz={7.5}
               fw={700}
             >
-              Culto
+              {isAvailable ? 'Disp.' : isUnavailable ? 'Indisp.' : 'Culto'}
             </Badge>
           )}
-        </Group>
-
-        {status && (
-          <Badge
-            size="xs"
-            variant={isAvailable ? 'white' : 'filled'}
-            color={isAvailable ? 'ibce' : 'red'}
-            radius="xs"
-            px={4}
-            h={{ base: 14, sm: 16 }}
-            fz={{ base: 8, sm: 9 }}
-            fw={700}
-            mt={1}
-          >
-            {isAvailable ? 'Disponível' : 'Indisponível'}
-          </Badge>
-        )}
+        </Stack>
 
         {loadingDate === value && (
-          <Loader size={9} color={isAvailable ? 'white' : isUnavailable ? 'red' : 'ibce'} mt={2} />
+          <Loader size={9} color={isAvailable ? 'white' : isUnavailable ? 'red' : 'ibce'} mt={1} />
         )}
       </Stack>
     )
@@ -117,7 +147,7 @@ export default function DisponibilidadeCalendar({ diasAtuacao, disponibilidade: 
   return (
     <Grid gutter="lg" align="flex-start">
       <Grid.Col span={{ base: 12, xl: 9 }}>
-        <Card withBorder padding="lg" bg="var(--app-surface)">
+        <Card withBorder padding="xs" p={{ base: 'xs', sm: 'md', md: 'lg' }} bg="var(--app-surface)">
           {mounted ? (
             <DatesProvider settings={{ locale: 'pt-br', firstDayOfWeek: 0, weekendDays: [0, 6] }}>
               <Calendar

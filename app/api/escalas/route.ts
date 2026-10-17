@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import { NovaEscala } from '@/types'
+import { createNotification } from '@/lib/notifications'
 
 // GET - Lista escalas
 export async function GET(request: NextRequest) {
@@ -89,6 +90,24 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) throw error
+
+    // Envia notificação ao membro escalado
+    if (usuario_id) {
+      try {
+        const [ano, mes, dia] = dataEscala.split('-')
+        const dataFormatada = `${dia}/${mes}/${ano}`
+        const funcaoNome = funcao === 'cantor' ? 'Cantor' : funcao === 'solo' ? 'Solo' : 'Músico'
+        await createNotification({
+          usuario_id,
+          titulo: 'Você foi escalado! 🎵',
+          mensagem: `Você foi escalado para o Culto de ${dataFormatada} como ${funcaoNome}.`,
+          tipo: 'escala',
+          link: `/escalas?data=${dataEscala}`,
+        })
+      } catch (notifErr) {
+        console.error('Falha ao enviar notificação de escala:', notifErr)
+      }
+    }
 
     return NextResponse.json(data, { status: 201 })
   } catch (error: any) {
