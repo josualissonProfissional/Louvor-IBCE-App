@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/auth'
+import { verificarECriarCicloAutomatico } from '@/lib/mensalidades'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,6 +11,9 @@ export async function GET() {
     if (!user) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
+
+    // Se a cobrança automática estiver ativa e virou o mês, assegura a criação do ciclo
+    await verificarECriarCicloAutomatico()
 
     const supabase = createServerClient()
     const { data: config, error } = await (supabase
@@ -34,6 +38,7 @@ export async function GET() {
       configuracao: config || {
         id: 'geral',
         modulo_mensalidade_ativo: false,
+        cobranca_automatica: true,
         chave_pix: '',
         tipo_chave_pix: 'aleatoria',
         beneficiario_pix: '',
@@ -60,6 +65,7 @@ export async function PUT(request: Request) {
     const body = await request.json()
     const {
       modulo_mensalidade_ativo,
+      cobranca_automatica,
       chave_pix,
       tipo_chave_pix,
       beneficiario_pix,
@@ -76,6 +82,7 @@ export async function PUT(request: Request) {
       .upsert({
         id: 'geral',
         modulo_mensalidade_ativo: Boolean(modulo_mensalidade_ativo),
+        cobranca_automatica: cobranca_automatica !== undefined ? Boolean(cobranca_automatica) : true,
         chave_pix: chave_pix || null,
         tipo_chave_pix: tipo_chave_pix || null,
         beneficiario_pix: beneficiario_pix || null,
@@ -105,6 +112,11 @@ export async function PUT(request: Request) {
           .update({ tesoureiro: true, updated_at: new Date().toISOString() })
           .eq('id', tesoureiro_id)
       }
+    }
+
+    // Executa verificação para criar o ciclo do mês atual se ativado
+    if (updatedConfig?.modulo_mensalidade_ativo && updatedConfig?.cobranca_automatica !== false) {
+      await verificarECriarCicloAutomatico()
     }
 
     return NextResponse.json({ success: true, configuracao: updatedConfig })

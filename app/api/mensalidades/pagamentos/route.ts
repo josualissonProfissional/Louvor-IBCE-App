@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { getCurrentUser, canManageFinances } from '@/lib/auth'
 import { createNotification } from '@/lib/notifications'
+import { verificarECriarCicloAutomatico } from '@/lib/mensalidades'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,6 +12,9 @@ export async function GET(request: Request) {
     if (!user) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
+
+    // Se a cobrança automática estiver ativa e virou o mês, cria o ciclo automaticamente
+    await verificarECriarCicloAutomatico()
 
     const { searchParams } = new URL(request.url)
     const cicloId = searchParams.get('ciclo_id')

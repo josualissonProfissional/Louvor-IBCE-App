@@ -11,8 +11,9 @@ import { modals } from '@mantine/modals'
 import { notifications } from '@mantine/notifications'
 import {
   IconAlertCircle, IconArrowLeft, IconCheck, IconCoin, IconCreditCard,
-  IconDotsVertical, IconEdit, IconInfoCircle, IconPlus, IconRefresh,
-  IconSearch, IconSettings, IconUserCheck, IconUsers, IconWallet, IconX,
+  IconDotsVertical, IconEdit, IconInfoCircle, IconPlayerPause, IconPlus,
+  IconRefresh, IconRepeat, IconSearch, IconSettings, IconUserCheck, IconUsers,
+  IconWallet, IconX,
 } from '@tabler/icons-react'
 import { Usuario } from '@/types'
 
@@ -75,6 +76,7 @@ export default function AdminMensalidadesPage() {
   // Configurações gerais
   const [config, setConfig] = useState({
     modulo_mensalidade_ativo: false,
+    cobranca_automatica: true,
     chave_pix: '',
     tipo_chave_pix: 'aleatoria',
     beneficiario_pix: '',
@@ -110,6 +112,7 @@ export default function AdminMensalidadesPage() {
         setIsAdmin(Boolean(dataConf.isAdmin))
         setConfig({
           modulo_mensalidade_ativo: Boolean(dataConf.configuracao?.modulo_mensalidade_ativo),
+          cobranca_automatica: dataConf.configuracao?.cobranca_automatica !== false,
           chave_pix: dataConf.configuracao?.chave_pix || '',
           tipo_chave_pix: dataConf.configuracao?.tipo_chave_pix || 'aleatoria',
           beneficiario_pix: dataConf.configuracao?.beneficiario_pix || '',
@@ -190,6 +193,35 @@ export default function AdminMensalidadesPage() {
       notifications.show({ color: 'red', title: 'Erro', message: err.message || 'Tente novamente.' })
     } finally {
       setSalvandoConfig(false)
+    }
+  }
+
+  // Alternar cobrança automática rápida em 1 clique
+  const alternarCobrancaAutomatica = async (novoValor: boolean) => {
+    try {
+      const novaConfig = { ...config, cobranca_automatica: novoValor }
+      setConfig(novaConfig)
+      const res = await fetch('/api/configuracoes', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(novaConfig),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Erro ao alterar cobrança automática')
+      }
+      notifications.show({
+        color: novoValor ? 'teal' : 'gray',
+        title: novoValor ? 'Cobrança Automática Ativada! ⚡' : 'Cobrança Automática Desativada',
+        message: novoValor
+          ? 'Assim que virar o mês, a mensalidade será gerada e lançada automaticamente para todos os integrantes.'
+          : 'A geração automática foi pausada. Os novos meses precisarão ser gerados manualmente.',
+        icon: <IconCheck size={18} />,
+      })
+      await loadInicial()
+    } catch (err: any) {
+      notifications.show({ color: 'red', title: 'Erro', message: err.message || 'Tente novamente.' })
+      await loadInicial()
     }
   }
 
@@ -295,7 +327,26 @@ export default function AdminMensalidadesPage() {
           <Text c="dimmed">Controle de arrecadação, vencimentos e baixa de pagamentos dos integrantes.</Text>
         </div>
 
-        <Group>
+        <Group gap="sm" wrap="wrap">
+          {isAdmin && (
+            <Tooltip
+              label={
+                config.cobranca_automatica
+                  ? 'Cobrança automática ativa (padrão): o novo mês e os lançamentos para todos os membros são gerados automaticamente ao virar o mês. Clique para pausar.'
+                  : 'Cobrança automática pausada: clique para ativar a cobrança automática ao virar o mês.'
+              }
+            >
+              <Button
+                variant={config.cobranca_automatica ? 'light' : 'outline'}
+                color={config.cobranca_automatica ? 'teal' : 'gray'}
+                leftSection={config.cobranca_automatica ? <IconRepeat size={18} /> : <IconPlayerPause size={18} />}
+                onClick={() => alternarCobrancaAutomatica(!config.cobranca_automatica)}
+              >
+                Cobrança Automática: {config.cobranca_automatica ? 'Ativa (Padrão)' : 'Desativada'}
+              </Button>
+            </Tooltip>
+          )}
+
           {isAdmin && (
             <Button
               variant="light"
@@ -303,7 +354,7 @@ export default function AdminMensalidadesPage() {
               leftSection={<IconSettings size={18} />}
               onClick={() => setConfigOpened(true)}
             >
-              Configurar Módulo
+              Configurações
             </Button>
           )}
 
@@ -324,7 +375,7 @@ export default function AdminMensalidadesPage() {
               setNovoCicloOpened(true)
             }}
           >
-            Novo Mês de Mensalidade
+            Novo Mês Manual
           </Button>
         </Group>
       </Group>
@@ -659,6 +710,15 @@ export default function AdminMensalidadesPage() {
               size="md"
               checked={config.modulo_mensalidade_ativo}
               onChange={(e) => setConfig({ ...config, modulo_mensalidade_ativo: e.currentTarget.checked })}
+            />
+
+            <Switch
+              label="Cobrança Automática ao Virar o Mês (Padrão)"
+              description="Gera automaticamente a nova mensalidade e os registros de pagamento para todos os integrantes assim que o mês virar, utilizando o valor e dia de vencimento padrão."
+              size="md"
+              color="teal"
+              checked={config.cobranca_automatica}
+              onChange={(e) => setConfig({ ...config, cobranca_automatica: e.currentTarget.checked })}
             />
 
             <Divider my="xs" />

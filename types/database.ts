@@ -219,6 +219,7 @@ export interface Database {
         Row: {
           id: string
           modulo_mensalidade_ativo: boolean
+          cobranca_automatica: boolean
           chave_pix: string
           tipo_chave_pix: string
           beneficiario_pix: string
@@ -230,6 +231,7 @@ export interface Database {
         Insert: {
           id?: string
           modulo_mensalidade_ativo?: boolean
+          cobranca_automatica?: boolean
           chave_pix?: string
           tipo_chave_pix?: string
           beneficiario_pix?: string
@@ -241,6 +243,7 @@ export interface Database {
         Update: {
           id?: string
           modulo_mensalidade_ativo?: boolean
+          cobranca_automatica?: boolean
           chave_pix?: string
           tipo_chave_pix?: string
           beneficiario_pix?: string
