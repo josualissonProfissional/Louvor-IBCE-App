@@ -4,15 +4,16 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import {
   Alert, Badge, Box, Button, Card, Divider, Grid, Group, Paper,
-  SimpleGrid, Skeleton, Stack, Table, Text, ThemeIcon, Title,
+  SimpleGrid, Skeleton, Stack, Table, Tabs, Text, ThemeIcon, Title,
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import {
-  IconAlertCircle, IconArrowRight, IconCalendar, IconCheck,
+  IconAlertCircle, IconArrowDownRight, IconArrowRight, IconArrowUpRight,
+  IconBuildingBank, IconCalendar, IconCheck, IconCoin,
   IconCopy, IconCreditCard, IconHistory, IconInfoCircle,
-  IconShieldCheck, IconWallet, IconX,
+  IconReceipt, IconShieldCheck, IconWallet, IconX,
 } from '@tabler/icons-react'
-import { CicloMensalidade, Configuracao, PagamentoMensalidade } from '@/types'
+import { CicloMensalidade, Configuracao, MovimentacaoComUsuario, PagamentoMensalidade } from '@/types'
 
 interface MeuPagamentoItem extends PagamentoMensalidade {
   ciclo: CicloMensalidade
@@ -29,14 +30,26 @@ export default function MinhasMensalidadesPage() {
   const [config, setConfig] = useState<Configuracao | null>(null)
   const [historico, setHistorico] = useState<MeuPagamentoItem[]>([])
   const [canManage, setCanManage] = useState(false)
+  const [activeTab, setActiveTab] = useState<string | null>('minha')
+
+  // Livro Caixa / Transparência
+  const [movimentacoes, setMovimentacoes] = useState<MovimentacaoComUsuario[]>([])
+  const [resumoCaixa, setResumoCaixa] = useState({
+    total_mensalidades_arrecadadas: 0,
+    total_outras_entradas: 0,
+    total_geral_entradas: 0,
+    total_saidas: 0,
+    saldo_em_caixa: 0,
+  })
 
   useEffect(() => {
     async function loadData() {
       try {
         setLoading(true)
-        const [resConfig, resPags] = await Promise.all([
+        const [resConfig, resPags, resMov] = await Promise.all([
           fetch('/api/configuracoes'),
           fetch('/api/mensalidades/pagamentos'),
+          fetch('/api/mensalidades/movimentacoes'),
         ])
 
         if (resConfig.ok) {
@@ -49,6 +62,14 @@ export default function MinhasMensalidadesPage() {
         if (resPags.ok) {
           const dataPags = await resPags.json()
           setHistorico(dataPags || [])
+        }
+
+        if (resMov.ok) {
+          const dataMov = await resMov.json()
+          setMovimentacoes(dataMov.movimentacoes || [])
+          if (dataMov.resumo) {
+            setResumoCaixa(dataMov.resumo)
+          }
         }
       } catch (err) {
         console.error('Erro ao carregar mensalidades:', err)
@@ -115,10 +136,10 @@ export default function MinhasMensalidadesPage() {
 
   return (
     <Stack gap="lg">
-      <Group justify="space-between" align="flex-start">
+      <Group justify="space-between" align="flex-start" wrap="wrap">
         <div>
-          <Title order={1}>Minha Mensalidade</Title>
-          <Text c="dimmed">Contribuição mensal para custos e materiais do Ministério de Louvor.</Text>
+          <Title order={1}>Mensalidades & Finanças</Title>
+          <Text c="dimmed">Contribuição mensal e transparência dos recursos do Ministério de Louvor IBCE.</Text>
         </div>
 
         {canManage && (
@@ -128,116 +149,274 @@ export default function MinhasMensalidadesPage() {
         )}
       </Group>
 
-      {/* Card Principal do Mês Vigente */}
-      {pagamentoAtual ? (
-        <Card withBorder padding="lg" radius="md" bg="var(--app-surface)">
-          <Grid gutter="lg" align="center">
-            <Grid.Col span={{ base: 12, md: 7 }}>
-              <Group gap="xs" mb="xs">
-                <Badge size="lg" color="ibce" variant="light">
-                  {pagamentoAtual.ciclo ? `${mesesNomes[pagamentoAtual.ciclo.mes - 1]} de ${pagamentoAtual.ciclo.ano}` : 'Mês Atual'}
-                </Badge>
-                {isAtualPago && <Badge color="green" size="lg" variant="filled" leftSection={<IconCheck size={14} />}>Mensalidade Paga</Badge>}
-                {isAtualIsento && <Badge color="blue" size="lg" variant="filled">Isento</Badge>}
-                {!isAtualPago && !isAtualIsento && <Badge color="orange" size="lg" variant="filled">Pendente</Badge>}
+      {/* Abas: Minha Contribuição vs Prestação de Contas */}
+      <Tabs value={activeTab} onChange={setActiveTab} variant="outline" radius="md">
+        <Tabs.List mb="md">
+          <Tabs.Tab value="minha" leftSection={<IconWallet size={18} />}>
+            Minha Contribuição
+          </Tabs.Tab>
+          <Tabs.Tab value="transparencia" leftSection={<IconReceipt size={18} />}>
+            Transparência & Caixa do Ministério
+          </Tabs.Tab>
+        </Tabs.List>
+
+        {/* ABA 1: MINHA CONTRIBUIÇÃO */}
+        <Tabs.Panel value="minha">
+          <Stack gap="lg">
+            {/* Card Principal do Mês Vigente */}
+            {pagamentoAtual ? (
+              <Card withBorder padding="lg" radius="md" bg="var(--app-surface)">
+                <Grid gutter="lg" align="center">
+                  <Grid.Col span={{ base: 12, md: 7 }}>
+                    <Group gap="xs" mb="xs">
+                      <Badge size="lg" color="ibce" variant="light">
+                        {pagamentoAtual.ciclo ? `${mesesNomes[pagamentoAtual.ciclo.mes - 1]} de ${pagamentoAtual.ciclo.ano}` : 'Mês Atual'}
+                      </Badge>
+                      {isAtualPago && <Badge color="green" size="lg" variant="filled" leftSection={<IconCheck size={14} />}>Mensalidade Paga</Badge>}
+                      {isAtualIsento && <Badge color="blue" size="lg" variant="filled">Isento</Badge>}
+                      {!isAtualPago && !isAtualIsento && <Badge color="orange" size="lg" variant="filled">Pendente</Badge>}
+                    </Group>
+
+                    <Title order={2} size="h1" c={isAtualPago ? 'green.7' : 'var(--app-text)'} mt="xs">
+                      {formatMoeda(pagamentoAtual.valor)}
+                    </Title>
+
+                    <Text size="sm" c="dimmed" mt="xs">
+                      {isAtualPago
+                        ? `Pagamento confirmado em ${formatData(pagamentoAtual.data_pagamento)}. Muito obrigado pela sua contribuição!`
+                        : `Vencimento: ${formatData(pagamentoAtual.ciclo?.data_vencimento)}. Por favor, realize o pagamento até a data limite.`}
+                    </Text>
+                  </Grid.Col>
+
+                  {/* Informações de PIX caso pendente */}
+                  {!isAtualPago && !isAtualIsento && config?.chave_pix && (
+                    <Grid.Col span={{ base: 12, md: 5 }}>
+                      <Paper withBorder p="md" radius="md" bg="var(--mantine-color-ibce-0)" style={{ borderColor: 'var(--mantine-color-ibce-3)' }}>
+                        <Group justify="space-between" mb="xs">
+                          <Text fw={700} size="sm" c="ibce.9">Pague via PIX</Text>
+                          <Badge size="xs" variant="light" color="ibce">{config.tipo_chave_pix?.toUpperCase() || 'PIX'}</Badge>
+                        </Group>
+
+                        <Box p="xs" bg="var(--app-surface)" style={{ borderRadius: 6, border: '1px solid var(--app-border)' }} mb="xs">
+                          <Text size="xs" c="dimmed">Chave PIX:</Text>
+                          <Text fw={650} size="sm" style={{ wordBreak: 'break-all' }}>{config.chave_pix}</Text>
+                          {config.beneficiario_pix && (
+                            <Text size="xs" c="dimmed" mt={4}>Beneficiário: {config.beneficiario_pix}</Text>
+                          )}
+                        </Box>
+
+                        <Button
+                          fullWidth
+                          color="ibce"
+                          size="sm"
+                          leftSection={<IconCopy size={16} />}
+                          onClick={copiarPix}
+                        >
+                          Copiar Chave PIX
+                        </Button>
+                      </Paper>
+                    </Grid.Col>
+                  )}
+                </Grid>
+              </Card>
+            ) : (
+              <Paper withBorder p="xl" radius="md" ta="center">
+                <ThemeIcon size={56} radius="xl" color="ibce" variant="light" mx="auto">
+                  <IconShieldCheck size={28} />
+                </ThemeIcon>
+                <Title order={3} mt="md">Nenhuma mensalidade em aberto</Title>
+                <Text c="dimmed" mt="xs">Você está em dia ou não há ciclos ativos no momento.</Text>
+              </Paper>
+            )}
+
+            {/* Histórico de Mensalidades Pessoais */}
+            <Card withBorder padding="lg" radius="md" bg="var(--app-surface)">
+              <Group gap="xs" mb="md">
+                <ThemeIcon color="ibce" variant="light"><IconHistory size={18} /></ThemeIcon>
+                <Title order={3} size="h4">Histórico de Contribuições</Title>
               </Group>
 
-              <Title order={2} size="h1" c={isAtualPago ? 'green.7' : 'var(--app-text)'} mt="xs">
-                {formatMoeda(pagamentoAtual.valor)}
-              </Title>
+              {historico.length === 0 ? (
+                <Text c="dimmed" size="sm">Nenhum registro no seu histórico.</Text>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <Table verticalSpacing="sm" horizontalSpacing="md">
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th>Mês de Referência</Table.Th>
+                        <Table.Th>Valor</Table.Th>
+                        <Table.Th>Vencimento</Table.Th>
+                        <Table.Th>Status</Table.Th>
+                        <Table.Th>Data do Pagamento</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {historico.map((item) => (
+                        <Table.Tr key={item.id}>
+                          <Table.Td>
+                            <Text fw={600} size="sm">
+                              {item.ciclo ? `${mesesNomes[item.ciclo.mes - 1]} de ${item.ciclo.ano}` : '—'}
+                            </Text>
+                          </Table.Td>
+                          <Table.Td><Text size="sm">{formatMoeda(item.valor)}</Text></Table.Td>
+                          <Table.Td><Text size="sm">{formatData(item.ciclo?.data_vencimento)}</Text></Table.Td>
+                          <Table.Td>
+                            {item.status === 'pago' && <Badge color="green" variant="light">Pago</Badge>}
+                            {item.status === 'pendente' && <Badge color="orange" variant="light">Pendente</Badge>}
+                            {item.status === 'isento' && <Badge color="blue" variant="light">Isento</Badge>}
+                          </Table.Td>
+                          <Table.Td><Text size="sm">{formatData(item.data_pagamento)}</Text></Table.Td>
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                </div>
+              )}
+            </Card>
+          </Stack>
+        </Tabs.Panel>
 
-              <Text size="sm" c="dimmed" mt="xs">
-                {isAtualPago
-                  ? `Pagamento confirmado em ${formatData(pagamentoAtual.data_pagamento)}. Muito obrigado pela sua contribuição!`
-                  : `Vencimento: ${formatData(pagamentoAtual.ciclo?.data_vencimento)}. Por favor, realize o pagamento até a data limite.`}
-              </Text>
-            </Grid.Col>
+        {/* ABA 2: TRANSPARÊNCIA & PRESTAÇÃO DE CONTAS */}
+        <Tabs.Panel value="transparencia">
+          <Stack gap="lg">
+            {/* Cards de Resumo para Membros */}
+            <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
+              <Paper
+                withBorder
+                p="md"
+                radius="md"
+                style={{
+                  borderColor: resumoCaixa.saldo_em_caixa >= 0 ? 'var(--mantine-color-green-4)' : 'var(--mantine-color-red-4)',
+                  background: resumoCaixa.saldo_em_caixa >= 0 ? 'rgba(46, 204, 113, 0.05)' : 'rgba(231, 76, 60, 0.05)',
+                }}
+              >
+                <Group justify="space-between">
+                  <Text size="xs" c="dimmed" fw={700}>SALDO EM CAIXA</Text>
+                  <ThemeIcon color={resumoCaixa.saldo_em_caixa >= 0 ? 'green' : 'red'} variant="light" size="lg">
+                    <IconBuildingBank size={20} />
+                  </ThemeIcon>
+                </Group>
+                <Text size="xl" fw={800} c={resumoCaixa.saldo_em_caixa >= 0 ? 'green.7' : 'red.7'} mt="xs">
+                  {formatMoeda(resumoCaixa.saldo_em_caixa)}
+                </Text>
+                <Text size="xs" c="dimmed" mt={4}>Disponível para o ministério</Text>
+              </Paper>
 
-            {/* Informações de PIX caso pendente */}
-            {!isAtualPago && !isAtualIsento && config?.chave_pix && (
-              <Grid.Col span={{ base: 12, md: 5 }}>
-                <Paper withBorder p="md" radius="md" bg="var(--mantine-color-ibce-0)" style={{ borderColor: 'var(--mantine-color-ibce-3)' }}>
-                  <Group justify="space-between" mb="xs">
-                    <Text fw={700} size="sm" c="ibce.9">Pague via PIX</Text>
-                    <Badge size="xs" variant="light" color="ibce">{config.tipo_chave_pix?.toUpperCase() || 'PIX'}</Badge>
-                  </Group>
+              <Paper withBorder p="md" radius="md">
+                <Group justify="space-between">
+                  <Text size="xs" c="dimmed" fw={700}>MENSALIDADES ARRECADADAS</Text>
+                  <ThemeIcon color="blue" variant="light" size="lg"><IconCoin size={20} /></ThemeIcon>
+                </Group>
+                <Text size="xl" fw={700} c="blue.7" mt="xs">
+                  {formatMoeda(resumoCaixa.total_mensalidades_arrecadadas)}
+                </Text>
+                <Text size="xs" c="dimmed" mt={4}>Contribuição coletiva dos integrantes</Text>
+              </Paper>
 
-                  <Box p="xs" bg="var(--app-surface)" style={{ borderRadius: 6, border: '1px solid var(--app-border)' }} mb="xs">
-                    <Text size="xs" c="dimmed">Chave PIX:</Text>
-                    <Text fw={650} size="sm" style={{ wordBreak: 'break-all' }}>{config.chave_pix}</Text>
-                    {config.beneficiario_pix && (
-                      <Text size="xs" c="dimmed" mt={4}>Beneficiário: {config.beneficiario_pix}</Text>
-                    )}
-                  </Box>
+              <Paper withBorder p="md" radius="md">
+                <Group justify="space-between">
+                  <Text size="xs" c="dimmed" fw={700}>OUTRAS ENTRADAS</Text>
+                  <ThemeIcon color="teal" variant="light" size="lg"><IconArrowDownRight size={20} /></ThemeIcon>
+                </Group>
+                <Text size="xl" fw={700} c="teal.7" mt="xs">
+                  {formatMoeda(resumoCaixa.total_outras_entradas)}
+                </Text>
+                <Text size="xs" c="dimmed" mt={4}>Venda de lanches, doações e cantina</Text>
+              </Paper>
 
-                  <Button
-                    fullWidth
-                    color="ibce"
-                    size="sm"
-                    leftSection={<IconCopy size={16} />}
-                    onClick={copiarPix}
-                  >
-                    Copiar Chave PIX
-                  </Button>
+              <Paper withBorder p="md" radius="md">
+                <Group justify="space-between">
+                  <Text size="xs" c="dimmed" fw={700}>INVESTIMENTOS & SAÍDAS</Text>
+                  <ThemeIcon color="red" variant="light" size="lg"><IconArrowUpRight size={20} /></ThemeIcon>
+                </Group>
+                <Text size="xl" fw={700} c="red.7" mt="xs">
+                  {formatMoeda(resumoCaixa.total_saidas)}
+                </Text>
+                <Text size="xs" c="dimmed" mt={4}>Instrumentos, cabos, manutenções</Text>
+              </Paper>
+            </SimpleGrid>
+
+            {/* Lista de Movimentações (Transparência de onde vai o recurso) */}
+            <Card withBorder padding="lg" radius="md" bg="var(--app-surface)">
+              <Group justify="space-between" mb="md" wrap="wrap">
+                <div>
+                  <Title order={3} size="h4">Entradas e Investimentos Recentes</Title>
+                  <Text size="xs" c="dimmed">
+                    Prestação de contas aberta: acompanhe onde os recursos do louvor estão sendo investidos.
+                  </Text>
+                </div>
+                <Badge color="ibce" variant="light">
+                  {movimentacoes.length} lançamentos
+                </Badge>
+              </Group>
+
+              {movimentacoes.length === 0 ? (
+                <Paper p="xl" ta="center">
+                  <ThemeIcon size={48} radius="xl" color="gray" variant="light" mx="auto">
+                    <IconReceipt size={24} />
+                  </ThemeIcon>
+                  <Text c="dimmed" mt="xs" size="sm">Nenhuma movimentação externa registrada no caixa ainda.</Text>
                 </Paper>
-              </Grid.Col>
-            )}
-          </Grid>
-        </Card>
-      ) : (
-        <Paper withBorder p="xl" radius="md" ta="center">
-          <ThemeIcon size={56} radius="xl" color="ibce" variant="light" mx="auto">
-            <IconShieldCheck size={28} />
-          </ThemeIcon>
-          <Title order={3} mt="md">Nenhuma mensalidade lançada</Title>
-          <Text c="dimmed" mt="xs">Quando a liderança ou tesoureiro abrir um novo ciclo, ele aparecerá aqui.</Text>
-        </Paper>
-      )}
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <Table verticalSpacing="sm" horizontalSpacing="md">
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th>Tipo</Table.Th>
+                        <Table.Th>Categoria</Table.Th>
+                        <Table.Th>Descrição</Table.Th>
+                        <Table.Th>Data</Table.Th>
+                        <Table.Th ta="right">Valor</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {movimentacoes.map((mov) => {
+                        const isEntrada = mov.tipo === 'entrada'
+                        return (
+                          <Table.Tr key={mov.id}>
+                            <Table.Td>
+                              {isEntrada ? (
+                                <Badge color="teal" variant="light" leftSection={<IconArrowDownRight size={12} />}>
+                                  Entrada
+                                </Badge>
+                              ) : (
+                                <Badge color="red" variant="light" leftSection={<IconArrowUpRight size={12} />}>
+                                  Saída
+                                </Badge>
+                              )}
+                            </Table.Td>
 
-      {/* Histórico de Mensalidades */}
-      <Card withBorder padding="lg" radius="md" bg="var(--app-surface)">
-        <Group gap="xs" mb="md">
-          <ThemeIcon color="ibce" variant="light"><IconHistory size={18} /></ThemeIcon>
-          <Title order={3} size="h4">Histórico de Contribuições</Title>
-        </Group>
+                            <Table.Td>
+                              <Badge variant="outline" color="gray">
+                                {mov.categoria}
+                              </Badge>
+                            </Table.Td>
 
-        {historico.length === 0 ? (
-          <Text c="dimmed" size="sm">Nenhum registro no seu histórico.</Text>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <Table verticalSpacing="sm" horizontalSpacing="md">
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Mês de Referência</Table.Th>
-                  <Table.Th>Valor</Table.Th>
-                  <Table.Th>Vencimento</Table.Th>
-                  <Table.Th>Status</Table.Th>
-                  <Table.Th>Data do Pagamento</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {historico.map((item) => (
-                  <Table.Tr key={item.id}>
-                    <Table.Td>
-                      <Text fw={600} size="sm">
-                        {item.ciclo ? `${mesesNomes[item.ciclo.mes - 1]} de ${item.ciclo.ano}` : '—'}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td><Text size="sm">{formatMoeda(item.valor)}</Text></Table.Td>
-                    <Table.Td><Text size="sm">{formatData(item.ciclo?.data_vencimento)}</Text></Table.Td>
-                    <Table.Td>
-                      {item.status === 'pago' && <Badge color="green" variant="light">Pago</Badge>}
-                      {item.status === 'pendente' && <Badge color="orange" variant="light">Pendente</Badge>}
-                      {item.status === 'isento' && <Badge color="blue" variant="light">Isento</Badge>}
-                    </Table.Td>
-                    <Table.Td><Text size="sm">{formatData(item.data_pagamento)}</Text></Table.Td>
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          </div>
-        )}
-      </Card>
+                            <Table.Td>
+                              <Text size="sm" fw={600}>{mov.descricao}</Text>
+                              {mov.observacao && <Text size="xs" c="dimmed">{mov.observacao}</Text>}
+                            </Table.Td>
+
+                            <Table.Td>
+                              <Text size="sm">{formatData(mov.data)}</Text>
+                            </Table.Td>
+
+                            <Table.Td ta="right">
+                              <Text size="sm" fw={700} c={isEntrada ? 'teal.7' : 'red.7'}>
+                                {isEntrada ? `+ ${formatMoeda(mov.valor)}` : `- ${formatMoeda(mov.valor)}`}
+                              </Text>
+                            </Table.Td>
+                          </Table.Tr>
+                        )
+                      })}
+                    </Table.Tbody>
+                  </Table>
+                </div>
+              )}
+            </Card>
+          </Stack>
+        </Tabs.Panel>
+      </Tabs>
     </Stack>
   )
 }

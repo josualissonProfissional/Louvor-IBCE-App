@@ -358,6 +358,50 @@ export interface Database {
           created_at?: string
         }
       }
+      movimentacoes_financeiras: {
+        Row: {
+          id: string
+          tipo: 'entrada' | 'saida'
+          categoria: string
+          descricao: string
+          valor: number
+          data: string
+          ciclo_id: string | null
+          comprovante_url: string | null
+          observacao: string | null
+          registrado_por: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          tipo: 'entrada' | 'saida'
+          categoria?: string
+          descricao: string
+          valor: number
+          data?: string
+          ciclo_id?: string | null
+          comprovante_url?: string | null
+          observacao?: string | null
+          registrado_por?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          tipo?: 'entrada' | 'saida'
+          categoria?: string
+          descricao?: string
+          valor?: number
+          data?: string
+          ciclo_id?: string | null
+          comprovante_url?: string | null
+          observacao?: string | null
+          registrado_por?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
   }
 }
